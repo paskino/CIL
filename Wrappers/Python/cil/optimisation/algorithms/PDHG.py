@@ -22,6 +22,7 @@ from __future__ import division
 from __future__ import print_function
 
 from cil.optimisation.algorithms import Algorithm
+from cil.optimisation.operators import ScaledOperator
 import warnings
 
 
@@ -148,28 +149,48 @@ class PDHG(Algorithm):
     def update(self):
         
         # Gradient ascent for the dual variable
-        self.operator.direct(self.xbar, out=self.y_tmp)
-        
-        # self.y_tmp *= self.sigma
-        # self.y_tmp += self.y_old
-        if self._use_axpby:
-            self.y_tmp.axpby(self.sigma, 1 , self.y_old, self.y_tmp)
+        # if operator is scaled
+        if isinstance(self.operator, ScaledOperator):
+            self.operator.operator.direct(self.xbar, out=self.y_tmp)
+            if self._use_axpby:
+                self.y_tmp.axpby(self.sigma * self.operator.scalar, 1 , self.y_old, self.y_tmp)
+            else:
+                self.y_tmp *= ( self.sigma * self.operator.scalar )
+                self.y_tmp += self.y_old
+
         else:
-            self.y_tmp *= self.sigma
-            self.y_tmp += self.y_old
+            self.operator.direct(self.xbar, out=self.y_tmp)
+            
+            # self.y_tmp *= self.sigma
+            # self.y_tmp += self.y_old
+            if self._use_axpby:
+                self.y_tmp.axpby(self.sigma, 1 , self.y_old, self.y_tmp)
+            else:
+                self.y_tmp *= self.sigma
+                self.y_tmp += self.y_old
 
         # self.y = self.f.proximal_conjugate(self.y_old, self.sigma)
         self.f.proximal_conjugate(self.y_tmp, self.sigma, out=self.y)
         
         # Gradient descent for the primal variable
-        self.operator.adjoint(self.y, out=self.x_tmp)
-        # self.x_tmp *= -1*self.tau
-        # self.x_tmp += self.x_old
-        if self._use_axpby:
-            self.x_tmp.axpby(-self.tau, 1. , self.x_old, self.x_tmp)
+        if isinstance(self.operator, ScaledOperator):
+            self.operator.operator.adjoint(self.y, out=self.x_tmp)
+            # self.x_tmp *= -1*self.tau
+            # self.x_tmp += self.x_old
+            if self._use_axpby:
+                self.x_tmp.axpby(-self.tau * self.operator.scalar, 1. , self.x_old, self.x_tmp)
+            else:
+                self.x_tmp *= ( -1 * self.tau * self.operator.scalar)
+                self.x_tmp += self.x_old
         else:
-            self.x_tmp *= -1*self.tau
-            self.x_tmp += self.x_old
+            self.operator.adjoint(self.y, out=self.x_tmp)
+            # self.x_tmp *= -1*self.tau
+            # self.x_tmp += self.x_old
+            if self._use_axpby:
+                self.x_tmp.axpby(-self.tau, 1. , self.x_old, self.x_tmp)
+            else:
+                self.x_tmp *= -1*self.tau
+                self.x_tmp += self.x_old
 
         self.g.proximal(self.x_tmp, self.tau, out=self.x)
 
