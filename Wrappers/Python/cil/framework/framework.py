@@ -29,6 +29,7 @@ import weakref
 import logging
 
 from cil.utilities.multiprocessing import NUM_THREADS
+import cupy as cp
 # check for the extension
 
 if platform.system() == 'Linux':
@@ -487,7 +488,7 @@ class ImageGeometry(object):
 
         if isinstance(value, Number):
             # it's created empty, so we make it 0
-            out.array.fill(value)
+            out.fill(value)
         else:
             if value == ImageGeometry.RANDOM:
                 seed = kwargs.get('seed', None)
@@ -2733,14 +2734,10 @@ class DataContainer(object):
                   **kwargs):
         '''Holds the data'''
         
-        if type(array) == numpy.ndarray:
-            if deep_copy:
-                self.array = array.copy()
-            else:
-                self.array = array    
+        if deep_copy:
+            self.array = array.copy()
         else:
-            raise TypeError('Array must be NumpyArray, passed {0}'\
-                            .format(type(array)))
+            self.array = array    
 
         #Don't set for derived classes
         if type(self) is DataContainer:
@@ -2887,6 +2884,9 @@ class DataContainer(object):
                     raise ValueError('Cannot fill with the provided array.' + \
                                      'Expecting shape {0} got {1}'.format(
                                      self.shape,array.shape))
+                if hasattr(self, 'backend'):
+                    if self.backend == cp:
+                        self.array = cp.array(array)
                 numpy.copyto(self.array, array)
             elif isinstance(array, Number):
                 self.array.fill(array) 
@@ -2899,6 +2899,10 @@ class DataContainer(object):
                     pass
 
                 if self.array.shape == array.shape:
+                    if hasattr(self, 'backend'):
+                        if self.backend == cp:
+                            self.array = cp.array(array.as_array())
+                            return
                     numpy.copyto(self.array, array.array)
                 else:
                     raise ValueError('Cannot fill with the provided array.' + \
@@ -3591,7 +3595,11 @@ class ImageData(DataContainer):
     def __init__(self, 
                  array = None, 
                  deep_copy=False, 
-                 geometry=None, 
+                 geometry=None,
+                 dtype=numpy.float32,
+                 suppress_warning=False,
+                 backend='numpy', 
+                 dimension_labels=None,
                  **kwargs):
 
         dtype = kwargs.get('dtype', numpy.float32)
@@ -3601,12 +3609,16 @@ class ImageData(DataContainer):
             raise AttributeError("ImageData requires a geometry")
             
 
-        labels = kwargs.get('dimension_labels', None)
+        labels = dimension_labels
         if labels is not None and labels != geometry.dimension_labels:
                 raise ValueError("Deprecated: 'dimension_labels' cannot be set with 'allocate()'. Use 'geometry.set_labels()' to modify the geometry before using allocate.")
+        bknd = numpy
+        if backend == 'cupy':
+            bknd = cp
+        self._backend = bknd
 
         if array is None:                                   
-            array = numpy.empty(geometry.shape, dtype=dtype)
+            array = bknd.empty(geometry.shape, dtype=dtype)
         elif issubclass(type(array) , DataContainer):
             array = array.as_array()
         elif issubclass(type(array) , numpy.ndarray):
@@ -3621,7 +3633,25 @@ class ImageData(DataContainer):
             raise ValueError('Number of dimensions are not 2 or 3 or 4 : {0}'.format(array.ndim))
     
         super(ImageData, self).__init__(array, deep_copy, geometry=geometry, **kwargs)
-                               
+
+
+    @property
+    def backend(self):
+        return self._backend
+
+    def subset(self, dimensions=None, **kw):
+        '''returns a subset of ImageData and regenerates the geometry'''
+        
+        if not kw.get('suppress_warning', False):
+            warnings.warn('Subset has been deprecated and will be removed in following version. Use reorder() and get_slice() instead',
+              DeprecationWarning)
+
+        if dimensions is None:
+            return self.get_slice(**kw)
+        else:
+            temp = self.copy()
+            temp.reorder(dimensions)
+            return temp
 
     def get_slice(self,channel=None, vertical=None, horizontal_x=None, horizontal_y=None, force=False):
         '''
