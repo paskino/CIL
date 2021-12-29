@@ -350,7 +350,7 @@ class TDataContainerAlgebra(object):
         image1.fill(arr)
         image2.fill(-arr)
  
-        a = 2
+        a = 2.0
         b = image1.copy()
         b.fill(-3)
 
