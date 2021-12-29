@@ -2887,6 +2887,7 @@ class DataContainer(object):
                 if hasattr(self, 'backend'):
                     if self.backend == cp:
                         self.array = cp.array(array)
+                        return
                 numpy.copyto(self.array, array)
             elif isinstance(array, Number):
                 self.array.fill(array) 
@@ -3623,6 +3624,8 @@ class ImageData(DataContainer):
             array = array.as_array()
         elif issubclass(type(array) , numpy.ndarray):
             pass
+        elif issubclass(type(array), cp.ndarray):
+            pass
         else:
             raise TypeError('array must be a CIL type DataContainer or numpy.ndarray got {}'.format(type(array)))
             
@@ -3683,7 +3686,17 @@ class ImageData(DataContainer):
         if len(out.shape) == 1 or geometry_new is None:
             return out
         else:
-            return ImageData(out.array, deep_copy=False, geometry=geometry_new, suppress_warning=True)                            
+            return ImageData(out.array, deep_copy=False, geometry=geometry_new, suppress_warning=True)  
+
+    def copy(self):
+        if self.backend == numpy:
+            backend = 'numpy'
+        elif self.backend == cp:
+            backend = 'cupy'
+        else:
+            backend = None
+        return ImageData(array=self.array.copy(), deep_copy=False, geometry=self.geometry,\
+             dtype=self.dtype, suppress_warning=True, backend=backend)                          
 
 
     def apply_circular_mask(self, radius=0.99, in_place=True):
