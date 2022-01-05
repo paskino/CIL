@@ -302,8 +302,8 @@ class TestData(object):
             arr = TestData.scikit_random_noise(image.as_array(), mode=mode, seed=seed, clip=clip,
                   **kwargs)
             out = image.copy()
-            if arr.dtype != dtype:
-                arr = numpy.asarray(arr, dtype=dtype)
+            if arr.dtype != out.dtype:
+                arr = numpy.asarray(arr, dtype=out.dtype)
             out.fill(arr)
             return out
         elif issubclass(type(image), numpy.ndarray):
@@ -453,7 +453,7 @@ class TestData(object):
             'poisson_values': []}
 
         for key in kwargs:
-            if key not in allowedkwargs[allowedtypes[mode]]:
+            if key not in allowedkwargs[allowedtypes[mode]] + ['dtype']:
                 raise ValueError('%s keyword not in allowed keywords %s' %
                                 (key, allowedkwargs[allowedtypes[mode]]))
 

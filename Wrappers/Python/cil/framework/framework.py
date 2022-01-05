@@ -3631,10 +3631,6 @@ class ImageData(DataContainer):
         labels = dimension_labels
         if labels is not None and labels != geometry.dimension_labels:
                 raise ValueError("Deprecated: 'dimension_labels' cannot be set with 'allocate()'. Use 'geometry.set_labels()' to modify the geometry before using allocate.")
-        bknd = numpy
-        if backend == 'cupy':
-            bknd = cp
-        self._backend = bknd
 
         # self._backend = backend
 
@@ -3659,12 +3655,7 @@ class ImageData(DataContainer):
         if array.ndim not in [2,3,4]:
             raise ValueError('Number of dimensions are not 2 or 3 or 4 : {0}'.format(array.ndim))
     
-        super(ImageData, self).__init__(array, deep_copy, geometry=geometry, **kwargs)
-
-
-    @property
-    def backend(self):
-        return self._backend
+        super(ImageData, self).__init__(array, deep_copy, geometry=geometry, backend=backend, **kwargs)
 
     def subset(self, dimensions=None, **kw):
         '''returns a subset of ImageData and regenerates the geometry'''
