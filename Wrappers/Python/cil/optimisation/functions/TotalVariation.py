@@ -182,8 +182,13 @@ class TotalVariation(Function):
 
         # correlation space or spacechannels
         self.correlation = correlation
-        self.backend = backend
-
+        if backend == 'cupy':
+            self.backend = 'numpy'
+            self.tv_backend = 'cupy'
+        else:
+            self.backend = backend  
+            self.tv_backend = 'numpy'      
+        
         # Define orthogonal projection onto the convex set C
         if lower is None:
             lower = -np.inf
