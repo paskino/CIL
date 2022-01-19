@@ -87,6 +87,7 @@ requirements:
     - ipp >=2021.10
     - tqdm
     - numba
+    - cupy
 
   #optional packages with version dependancies
   run_constrained:
