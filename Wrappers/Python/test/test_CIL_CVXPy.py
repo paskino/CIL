@@ -158,6 +158,13 @@ class Test_CIL_vs_CVXPy(unittest.TestCase):
     
     @unittest.skipUnless(has_cvxpy, "CVXpy not installed")
     def test_cil_vs_cvxpy_totalvariation_isotropic(self):
+        return self.isotropic_tv()
+
+    @unittest.skipUnless(has_cvxpy, "CVXpy not installed")
+    def test_cil_vs_cvxpy_totalvariation_isotropic_cupy(self):
+        return self.isotropic_tv('cupy')
+
+    def isotropic_tv(self, backend='numpy'):
 
         # solution
         u_cvx = cvxpy.Variable(self.data.shape)
@@ -177,8 +184,8 @@ class Test_CIL_vs_CVXPy(unittest.TestCase):
         tv_cvxpy = prob.solve(verbose = True, solver = cvxpy.SCS)        
 
         # use TotalVariation from CIL (with Fast Gradient Projection algorithm)
-        TV = TotalVariation(max_iteration=200, warm_start=False)
-        tv_cil = TV.proximal(self.data, tau=alpha**2)     
+        TV = TotalVariation(max_iteration=200, backend=backend)
+        tv_cil = TV.proximal(self.data, tau=alpha*alpha)     
 
         # compare solution
         np.testing.assert_allclose(tv_cil.array, u_cvx.value,atol=1e-3)  
@@ -188,6 +195,8 @@ class Test_CIL_vs_CVXPy(unittest.TestCase):
         cil_objective = f(tv_cil) + TV(tv_cil)*(alpha**2)
         np.testing.assert_allclose(cil_objective, obj.value, atol=1e-3)  
 
+
+        
     @unittest.skipUnless(has_cvxpy, "CVXpy not installed")
     def test_cil_vs_cvxpy_totalvariation_anisotropic(self):
 

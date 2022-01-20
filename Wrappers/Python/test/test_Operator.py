@@ -229,28 +229,35 @@ class TestOperator(CCPiTestClass):
         y = Id.direct(img)
         numpy.testing.assert_array_equal(y.as_array(), img.as_array())
 
-
-    def test_FiniteDifference(self):
+    def test_FiniteDifferenceNumpy(self):
+        self._FiniteDifference('numpy')
+    def test_FiniteDifferenceCupy(self):
+        self._FiniteDifference('cupy')
+    def _FiniteDifference(self, backend):
+        print ("test FiniteDifference")
+        ##
         N, M = 2, 3
         numpy.random.seed(1)
         ig = ImageGeometry(N, M)
         Id = IdentityOperator(ig)
 
         FD = FiniteDifferenceOperator(ig, direction = 0, bnd_cond = 'Neumann')
-        u = FD.domain_geometry().allocate('random')       
+        u = FD.domain_geometry().allocate('random', backend=backend)
         
-        res = FD.domain_geometry().allocate(ImageGeometry.RANDOM)
+        
+        res = FD.domain_geometry().allocate(ImageGeometry.RANDOM, backend=backend)
         FD.adjoint(u, out=res)
         w = FD.adjoint(u)
 
-        self.assertNumpyArrayEqual(res.as_array(), w.as_array())
         
-        res = Id.domain_geometry().allocate(ImageGeometry.RANDOM)
+        self.assertArrayEqual(res, w)
+        
+        res = Id.domain_geometry().allocate(ImageGeometry.RANDOM, backend=backend)
         Id.adjoint(u, out=res)
         w = Id.adjoint(u)
 
-        self.assertNumpyArrayEqual(res.as_array(), w.as_array())
-        self.assertNumpyArrayEqual(u.as_array(), w.as_array())
+        self.assertArrayEqual(res, w)
+        self.assertArrayEqual(u, w)
 
         G = GradientOperator(ig)
 
@@ -259,7 +266,7 @@ class TestOperator(CCPiTestClass):
         G.adjoint(u, out=res)
         w = G.adjoint(u)
 
-        self.assertNumpyArrayEqual(res.as_array(), w.as_array())
+        self.assertArrayEqual(res, w)
         
         u = G.domain_geometry().allocate(ImageGeometry.RANDOM)
         res = G.range_geometry().allocate()
@@ -283,9 +290,12 @@ class TestOperator(CCPiTestClass):
             res2 = FD2.direct(x)
             res2b = FD2.adjoint(x) 
             
-            numpy.testing.assert_almost_equal(res1.as_array(), res2.as_array())
-            numpy.testing.assert_almost_equal(res1b.as_array(), res2b.as_array())
-            
+            # numpy.testing.assert_almost_equal(res1.as_array(), res2.as_array())
+            # numpy.testing.assert_almost_equal(res1b.as_array(), res2b.as_array())
+            self.assertArrayAlmostEqual(res1, res2)
+            self.assertArrayAlmostEqual(res1b, res2b)
+            print("Check 2D FiniteDiff for label {}".format(labels[i]))
+        
         # 2D  + chan     
         M, N, K = 2,3,4
         ig1 = ImageGeometry(voxel_num_x=M, voxel_num_y=N, channels=K, voxel_size_x=0.1, voxel_size_y=0.4)
