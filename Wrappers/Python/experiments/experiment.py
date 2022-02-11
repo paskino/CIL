@@ -28,7 +28,7 @@ fbp_recon = FBP(data.geometry.get_ImageGeometry(), data.geometry)(data)
 show2D([fbp_recon, gt], cmap='plasma')
 
 #%%
-alpha = 50
+alpha = 1.
 # %%
 
 # problem 1 original pixel size
@@ -59,10 +59,13 @@ class ScaledArgFunction(Function):
         return ret
 
     def gradient(self, x, out=None):
+        # fix the gradient
+        x *= self.scalar
+
         return self.scalar * self.function.gradient(x, out=out)
 
     def proximal(self, x, tau, out=None):
-        # https://odlgroup.github.io/odl/generated/odl.solvers.nonsmooth.proximal_operators.proximal_arg_scaling.html#odl.solvers.nonsmooth.proximal_operators.proximal_arg_scaling
+        # eq 6.6 of https://archive.siam.org/books/mo25/mo25_ch6.pdf
         should_return = False
         if out is None:
             out = x * 0
@@ -70,14 +73,14 @@ class ScaledArgFunction(Function):
         x *= self.scalar
         self.function.proximal( x, tau * self.scalar**2, out=out)
         x /= self.scalar
-
+        out /= self.scalar
         if should_return:
             return out
     def convex_conjugate(self, x):
-        # self.functional.convex_conj * (1 / self.scalar)
-        x *= self.scalar
-        ret = (1/self.scalar) * self.function.convex_conjugate(x)
+        # https://en.wikipedia.org/wiki/Convex_conjugate#Table_of_selected_convex_conjugates
         x /= self.scalar
+        ret = self.function.convex_conjugate(x)
+        x *= self.scalar
         return ret
 
 #%%        
@@ -101,11 +104,20 @@ G = IndicatorBox(lower=0)
 algo1 = PDHG(f=F, g=G, operator=K, max_iteration=1000, update_objective_interval=100,log_file="algo1.nxs")
 
 #%%
-algo1.max_iteration += 1000
+# algo1.max_iteration += 1000
 algo1.run(1000)
 # NEXUSDataWriter(algo1.solution, file_name='algo1.nxs').write()
 #%%
-show2D([algo1.solution / ( K.norm()*K.norm() ) , gt], cmap='plasma', fix_range=False)
+show2D([algo1.solution / ( K.norm()*K.norm() ) , gt], title=['PDHG rescaled', 'Ground Truth'],
+       cmap='plasma', fix_range=False)
+
+#%%
+import matplotlib.pyplot as plt
+
+plt.plot(algo1.solution.as_array()[64,64,:], label='PDHG')
+plt.plot(gt.as_array()[64,64,:], label='GT')
+plt.legend()
+plt.show()
 
 # %%
 
