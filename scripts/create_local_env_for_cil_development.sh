@@ -85,6 +85,7 @@ else
     scikit-image
     tigre=2.4
     tomophantom=2.0.0
+    cupy
     -c conda-forge
     -c intel
     -c ccpi/label/dev
