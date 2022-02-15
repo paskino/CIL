@@ -10,6 +10,92 @@ from cil.plugins.astra import ProjectionOperator as POA
 from cil.plugins.astra import FBP
 from cil.utilities.display import show2D
 from cil.io import NEXUSDataWriter
+def extract_single_line(data, **kwargs):
+    try:
+        geometry = data.geometry
+        possible_dimensions = geometry.dimension_labels
+    except AttributeError:
+        possible_dimensions = ['x','y','z']
+    i = 0
+    for k,v in kwargs.items():
+        if k not in possible_dimensions:
+            raise ValueError(f'Unexpected key {k}, not in {possible_dimensions}')
+        sliceme = {k:v}
+        if i > 0:
+            data_plot = data_plot.get_slice(**sliceme)
+        else:
+            data_plot = data.get_slice(**sliceme)
+        i += 1
+    return data_plot.as_array()
+
+def line_plot(data, line_coords=None, label=None, title=None, color=None, size=(15,15)):
+    '''Creates a 1D plot of data given some coordinates
+
+    Parameters
+    ----------
+    data : ImageData, AcquisitionData, generic DataContainer or a list of such
+           data from which to extract the line plot. 
+    line_coords : tuple, list of tuples
+        Specifies the line plot to show. 
+        For 3D datacontainers two slices: [(direction0, index0),(direction1, index1)]. 
+        For 4D datacontainers three slices: [(direction0, index0),(direction1, index1),(direction2, index2)].
+    label : string or list of strings, optional
+        Label for the line plot. If passed a list of data, label must be a list of matching length.
+    title : string, optiona
+        Title for the whole plot
+    color : string or list of strings, optional
+        Color for each line in the plot. If passed a list of data, color must be a list of matching length.
+    size : tuple or list of ints, optional
+        Specifies the size of the plot
+
+
+    Example Usage:
+    --------------
+
+    line_plot( [gt, fbp_recon, algo1.solution * A1.norm()], 
+                label=['Ground Truth', 'FBP', 'PDHG + TV + nn'],
+                line_coords=(('horizontal_x',64), ('vertical',64)), 
+                title=f'Comparison alpha {alpha}',
+                color=('cyan', 'purple', 'orange'), 
+                size=(15,9)
+           )
+
+    '''
+    kwargs = {}
+    for i, el in enumerate(line_coords):
+        kwargs[el[0]] = el[1]
+    data_plot = []
+
+    if issubclass(data.__class__, (list, tuple)):
+        for el in data:
+            data_plot.append( extract_single_line(el, **kwargs))
+            axes_labels = list(el.dimension_labels)
+    else:
+        data_plot.append( extract_single_line(data, **kwargs))
+        axes_labels = list(el.dimension_labels)
+
+    fig, ax = plt.subplots(1, 1, figsize=size)
+    for i,el in enumerate(data_plot):
+        try:
+            if color is None:
+                color = [None for _ in data]
+            ax.plot(el, color=color[i], label=label[i])
+            
+        except:
+            ax.plot(el, label=label, color=color)
+    ax.set_title(title)
+
+    xaxis = []
+    for i, el in enumerate(axes_labels):
+        if el not in kwargs.keys():
+            xaxis.append(el)
+    ax.set_xlabel(xaxis[0])
+    ax.set_ylabel('Pixel value')
+
+    plt.legend()
+    plt.show()
+
+
 #%%
 data = dataexample.SIMULATED_PARALLEL_BEAM_DATA.get()
 gt3d = dataexample.SIMULATED_SPHERE_VOLUME.get()
@@ -56,10 +142,17 @@ class ScaledArgFunction(Function):
         return ret
 
     def gradient(self, x, out=None):
-        # fix the gradient
         x *= self.scalar
-
-        return self.scalar * self.function.gradient(x, out=out)
+        should_return = False
+        if out is None:
+            out = self.function.gradient(x)
+            should_return = True
+        else:
+            self.function.gradient(x, out=out)
+        out *= self.scalar
+        x /= self.scalar
+        if should_return:
+            return out
 
     def proximal(self, x, tau, out=None):
         # eq 6.6 of https://archive.siam.org/books/mo25/mo25_ch6.pdf
@@ -110,7 +203,7 @@ algo1 = PDHG(f=F, g=G, operator=K, max_iteration=1000, update_objective_interval
 algo1.run(1000)
 # NEXUSDataWriter(algo1.solution, file_name='algo1.nxs').write()
 #%%
-show2D([algo1.solution * A1.norm() , gt], title=[f'PDHG rescaled {alpha}', 'Ground Truth'],
+show2D([algo1.solution * A1.norm(), gt], title=[f'PDHG rescaled {alpha}', 'Ground Truth'],
        cmap='plasma', fix_range=True)
 
 #%%
@@ -123,50 +216,19 @@ plt.legend()
 plt.show()
 
 #%%
-def extract_single_line(data, **kwargs):
-    try:
-        geometry = data.geometry
-        possible_dimensions = geometry.dimension_labels
-    except AttributeError:
-        possible_dimensions = ['x','y','z']
-    i = 0
-    for k,v in kwargs.items():
-        if k not in possible_dimensions:
-            raise ValueError(f'Unexpected key {k}, not in {possible_dimensions}')
-        sliceme = {k:v}
-        print (sliceme)
-        if i > 0:
-            data_plot = data_plot.get_slice(**sliceme)
-        else:
-            data_plot = data.get_slice(**sliceme)
-        i += 1
-    return data_plot.as_array()
+
 #%%
-def line_plot(data, size=(15,15), color=None, title=None, **kwargs):
-    data_plot = []
-    print (type(data_plot))
-    if issubclass(data.__class__, (list, tuple)):
-        for el in data:
-            data_plot.append( extract_single_line(el, **kwargs))
-    else:
-        data_plot.append( extract_single_line(data, **kwargs))
-
-    print (type(data_plot))
-    
-    fig, ax = plt.subplots(1, 1, figsize=size)
-    for i,el in enumerate(data_plot):
-        try:
-            ax.plot(el, color=color[i], label=title[i])
-        except:
-            ax.plot(el, label=title, color=color)
-    plt.show()
-
-line_plot(algo1.solution, horizontal_x=64, vertical=64)
+line_plot([gt, fbp_recon, algo1.solution * A1.norm()], 
+           label=['Ground Truth', 'FBP', 'PDHG + TV + nn'],
+           line_coords=(('horizontal_x',64), ('vertical',64)), 
+           title=f'Comparison alpha {alpha}',
+           color=('cyan', 'purple', 'orange'), 
+           size=(15,9))
 # %%
 
 # problem 2 rescale into alpha
 
-alpha_tilde = alpha / ((A1.norm()**2) / g1.norm())
+alpha_tilde = alpha * ((A1.norm()**2) / g1.norm())
 
 F2 = BlockFunction(
     L2NormSquared(b=data),
@@ -190,11 +252,20 @@ algo2.run(1000)
 #%%
 show2D([algo1.solution*A1.norm(), algo2.solution, gt], 
     title=[f'Operator rescale Matthias {alpha}', f'Operator Rescale Vaggelis {alpha}', 'GT'] ,
-     cmap='plasma', fix_range=(0,0.003))
+     cmap='plasma', fix_range=False)
 #%% 
+line_plot([gt, fbp_recon, algo1.solution * A1.norm(), algo2.solution], 
+           label=['Ground Truth', 'FBP', 'Matthias PDHG + TV + nn', 'Vaggelis PDHG + TV + nn'],
+           line_coords=(('horizontal_x',64), ('vertical',64)), 
+           title=f'Comparison alpha {alpha}'
+           )
+#%%
+
 # Save the solutions
-NEXUSDataWriter(file_name=f"Matthias_PDHG_rescale_alpha_{alpha}.nxs", data=algo1.solution).write()
-NEXUSDataWriter(file_name=f"Vaggelis_PDHG_rescale_L2NormSquared_alpha_{alpha}.nxs", data=algo2.solution).write()
+NEXUSDataWriter(file_name=f"Matthias_PDHG_rescale_alpha_{alpha}.nxs", 
+                data=(algo1.solution * A1.norm())).write()
+NEXUSDataWriter(file_name=f"Vaggelis_PDHG_rescale_L2NormSquared_alpha_{alpha}.nxs",
+                data=algo2.solution).write()
 
 # problem 2 same data pixel size = 1
 # ag2 = data.geometry.copy()
