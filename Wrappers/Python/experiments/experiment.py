@@ -28,7 +28,7 @@ fbp_recon = FBP(data.geometry.get_ImageGeometry(), data.geometry)(data)
 show2D([fbp_recon, gt], cmap='plasma')
 
 #%%
-alpha = 1.
+alpha = 0.12
 # %%
 
 # problem 1 original pixel size
@@ -42,9 +42,6 @@ print ("norm g1", g1.norm())
 
 '''
 Should be looking at F(beta * x), i.e. F or a rescaled dataset
-
-prox
-https://odlgroup.github.io/odl/generated/odl.solvers.nonsmooth.proximal_operators.proximal_arg_scaling.html#odl.solvers.nonsmooth.proximal_operators.proximal_arg_scaling
 '''
 from cil.optimisation.functions import Function
 class ScaledArgFunction(Function):
@@ -88,7 +85,7 @@ class ScaledArgFunction(Function):
 F = BlockFunction(
     # A1.norm() * L2NormSquared(b=data),
     # g1.norm() * MixedL21Norm()
-    ScaledArgFunction( L2NormSquared(b=data), A1.norm()),
+    ScaledArgFunction( L2NormSquared(b=data/A1.norm()), A1.norm()),
     ScaledArgFunction( MixedL21Norm(), g1.norm())
 )
 
@@ -98,7 +95,12 @@ K = BlockOperator(
     (alpha/g1.norm()) * g1
     )
 
+
+# high alpha + Indicator box -> zero solution
+# small alpha —> Ground truth
 G = IndicatorBox(lower=0)
+
+# high alpha + ZeroFunction -> high alpha should converge to the mean value of your data 
 # G = ZeroFunction()
 
 algo1 = PDHG(f=F, g=G, operator=K, max_iteration=1000, update_objective_interval=100,log_file="algo1.nxs")
@@ -108,20 +110,63 @@ algo1 = PDHG(f=F, g=G, operator=K, max_iteration=1000, update_objective_interval
 algo1.run(1000)
 # NEXUSDataWriter(algo1.solution, file_name='algo1.nxs').write()
 #%%
-show2D([algo1.solution / ( K.norm()*K.norm() ) , gt], title=['PDHG rescaled', 'Ground Truth'],
-       cmap='plasma', fix_range=False)
+show2D([algo1.solution * A1.norm() , gt], title=[f'PDHG rescaled {alpha}', 'Ground Truth'],
+       cmap='plasma', fix_range=True)
 
 #%%
 import matplotlib.pyplot as plt
 
-plt.plot(algo1.solution.as_array()[64,64,:], label='PDHG')
 plt.plot(gt.as_array()[64,64,:], label='GT')
+plt.plot(algo1.solution.as_array()[64,64,:]*(A1.norm()), label=f'PDHG {alpha}', color='purple')
+plt.plot(fbp_recon.as_array()[64,64,:], label='FBP', color='r')
 plt.legend()
 plt.show()
 
+#%%
+def extract_single_line(data, **kwargs):
+    try:
+        geometry = data.geometry
+        possible_dimensions = geometry.dimension_labels
+    except AttributeError:
+        possible_dimensions = ['x','y','z']
+    i = 0
+    for k,v in kwargs.items():
+        if k not in possible_dimensions:
+            raise ValueError(f'Unexpected key {k}, not in {possible_dimensions}')
+        sliceme = {k:v}
+        print (sliceme)
+        if i > 0:
+            data_plot = data_plot.get_slice(**sliceme)
+        else:
+            data_plot = data.get_slice(**sliceme)
+        i += 1
+    return data_plot.as_array()
+#%%
+def line_plot(data, size=(15,15), color=None, title=None, **kwargs):
+    data_plot = []
+    print (type(data_plot))
+    if issubclass(data.__class__, (list, tuple)):
+        for el in data:
+            data_plot.append( extract_single_line(el, **kwargs))
+    else:
+        data_plot.append( extract_single_line(data, **kwargs))
+
+    print (type(data_plot))
+    
+    fig, ax = plt.subplots(1, 1, figsize=size)
+    for i,el in enumerate(data_plot):
+        try:
+            ax.plot(el, color=color[i], label=title[i])
+        except:
+            ax.plot(el, label=title, color=color)
+    plt.show()
+
+line_plot(algo1.solution, horizontal_x=64, vertical=64)
 # %%
 
-# problem 2
+# problem 2 rescale into alpha
+
+alpha_tilde = alpha / ((A1.norm()**2) / g1.norm())
 
 F2 = BlockFunction(
     L2NormSquared(b=data),
@@ -131,11 +176,11 @@ F2 = BlockFunction(
 
 K2 = BlockOperator(
     A1, 
-    (alpha * A1.norm()) * g1
+    alpha_tilde * g1
     )
 
 G2 = IndicatorBox(lower=0)
-# G = ZeroFunction()
+# G2 = ZeroFunction()
 
 algo2 = PDHG(f=F2, g=G2, operator=K2, max_iteration=1000, update_objective_interval=100,log_file="algo1.nxs")
 
@@ -143,93 +188,98 @@ algo2 = PDHG(f=F2, g=G2, operator=K2, max_iteration=1000, update_objective_inter
 # algo1.max_iteration += 1000
 algo2.run(1000)
 #%%
-show2D([algo1.solution, algo2.solution, gt], 
-    title=['Operator rescale', 'No rescale', 'GT'] , cmap='plasma', fix_range=False)
+show2D([algo1.solution*A1.norm(), algo2.solution, gt], 
+    title=[f'Operator rescale Matthias {alpha}', f'Operator Rescale Vaggelis {alpha}', 'GT'] ,
+     cmap='plasma', fix_range=(0,0.003))
+#%% 
+# Save the solutions
+NEXUSDataWriter(file_name=f"Matthias_PDHG_rescale_alpha_{alpha}.nxs", data=algo1.solution).write()
+NEXUSDataWriter(file_name=f"Vaggelis_PDHG_rescale_L2NormSquared_alpha_{alpha}.nxs", data=algo2.solution).write()
 
 # problem 2 same data pixel size = 1
-ag2 = data.geometry.copy()
-print (ag2)
-#%%
-ag2.pixel_size_h = 1.
-ag2.pixel_size_v = 1.
-print (ag2)
+# ag2 = data.geometry.copy()
+# print (ag2)
+# #%%
+# ag2.pixel_size_h = 1.
+# ag2.pixel_size_v = 1.
+# print (ag2)
 
-# data2 = ag2.allocate(None)
-# data2.fill(data)
+# # data2 = ag2.allocate(None)
+# # data2.fill(data)
 
-from cil.framework import AcquisitionData
-# use the same data array as before only the geometry is different
-data2 = AcquisitionData(data.array, deep_copy=False, geometry=ag2, suppress_warning=True)
+# from cil.framework import AcquisitionData
+# # use the same data array as before only the geometry is different
+# data2 = AcquisitionData(data.array, deep_copy=False, geometry=ag2, suppress_warning=True)
 
-ig2 = data2.geometry.get_ImageGeometry()
-print (ig2)
-#%%
-# A2 = ProjectionOperator(ig2, data2.geometry)
-A2 = POA(ig2, data2.geometry)
-print ("norm A2", A2.norm())
+# ig2 = data2.geometry.get_ImageGeometry()
+# print (ig2)
+# #%%
+# # A2 = ProjectionOperator(ig2, data2.geometry)
+# A2 = POA(ig2, data2.geometry)
+# print ("norm A2", A2.norm())
 
-# the Gradient is scaled by the voxel size, so in the case we set the pixel size
-# to 1 we need to rescale the alpha by the pixel size of ig
-# assuming cubic voxels
-alpha2 = alpha / (ig1.voxel_size_x)#* ig1.voxel_size_y * ig1.voxel_size_z)
+# # the Gradient is scaled by the voxel size, so in the case we set the pixel size
+# # to 1 we need to rescale the alpha by the pixel size of ig
+# # assuming cubic voxels
+# alpha2 = alpha / (ig1.voxel_size_x)#* ig1.voxel_size_y * ig1.voxel_size_z)
 
-F2 = BlockFunction(
-    L2NormSquared(b=data2),
-    MixedL21Norm()
-)
+# F2 = BlockFunction(
+#     L2NormSquared(b=data2),
+#     MixedL21Norm()
+# )
 
-g2 = GradientOperator(ig2)
-print ("norm g2", g2.norm())
+# g2 = GradientOperator(ig2)
+# print ("norm g2", g2.norm())
 
-K2 = BlockOperator(
-    A2, 
-    alpha2 * g2
-    )
+# K2 = BlockOperator(
+#     A2, 
+#     alpha2 * g2
+#     )
 
-# G2 = ZeroFunction()
-G2 = IndicatorBox(lower=0)
-#%%
-algo2 = PDHG(f=F2, g=G2, operator=K2, max_iteration=1000, update_objective_interval=100, log_file="algo2.nxs")
-#%%
-# algo2.max_iteration += 1000
-algo2.run(1000)
-# NEXUSDataWriter(algo2.solution, file_name='algo2.nxs').write()
-# %%
-# show2D(algo2.solution, cmap='plasma', fix_range=False)
+# # G2 = ZeroFunction()
+# G2 = IndicatorBox(lower=0)
+# #%%
+# algo2 = PDHG(f=F2, g=G2, operator=K2, max_iteration=1000, update_objective_interval=100, log_file="algo2.nxs")
+# #%%
+# # algo2.max_iteration += 1000
+# algo2.run(1000)
+# # NEXUSDataWriter(algo2.solution, file_name='algo2.nxs').write()
+# # %%
+# # show2D(algo2.solution, cmap='plasma', fix_range=False)
+
+# # # %%
+# # on a smaller voxel the same attenuation is given if the effective density is 
+# # higher, scaling as the inverse of the voxel volume.
+# diff = algo1.solution - algo2.solution/(ig1.voxel_size_x*ig1.voxel_size_y*ig1.voxel_size_z )
+
+# show2D([algo1.solution, algo2.solution, gt, diff], 
+#        title=['pix {} {} alpha {}'.format(ig1.voxel_size_x,ig1.voxel_size_y, alpha), 
+#               'pix {} {} alpha {}'.format(ig2.voxel_size_x,ig2.voxel_size_y, alpha2),
+#               'Ground Truth', 'diff'], cmap='plasma',
+#        fix_range=False)
+
+# #%%
+# show2D([algo1.solution, algo2.solution, gt], 
+#        title=['pix {} {} alpha {}'.format(ig1.voxel_size_x,ig1.voxel_size_y, alpha), 
+#               'pix {} {} alpha {}'.format(ig2.voxel_size_x,ig2.voxel_size_y, alpha2),
+#               'Ground Truth'], cmap='plasma', fix_range=False)
+# # %%
+# import matplotlib.pyplot as plt
+
+# plt.semilogy([el[0] for el in algo1.loss], label='pix 64')
+# plt.semilogy([el[0] for el in algo2.loss], label='pix 1')
+# plt.legend()
+# plt.show()
+# # # %%
 
 # # %%
-# on a smaller voxel the same attenuation is given if the effective density is 
-# higher, scaling as the inverse of the voxel volume.
-diff = algo1.solution - algo2.solution/(ig1.voxel_size_x*ig1.voxel_size_y*ig1.voxel_size_z )
 
-show2D([algo1.solution, algo2.solution, gt, diff], 
-       title=['pix {} {} alpha {}'.format(ig1.voxel_size_x,ig1.voxel_size_y, alpha), 
-              'pix {} {} alpha {}'.format(ig2.voxel_size_x,ig2.voxel_size_y, alpha2),
-              'Ground Truth', 'diff'], cmap='plasma',
-       fix_range=False)
+# def prova (**kwargs):
+#     if len(kwargs) == 0:
+#         return 0
+#     else:
+#         return 1
 
-#%%
-show2D([algo1.solution, algo2.solution, gt], 
-       title=['pix {} {} alpha {}'.format(ig1.voxel_size_x,ig1.voxel_size_y, alpha), 
-              'pix {} {} alpha {}'.format(ig2.voxel_size_x,ig2.voxel_size_y, alpha2),
-              'Ground Truth'], cmap='plasma', fix_range=False)
-# %%
-import matplotlib.pyplot as plt
-
-plt.semilogy([el[0] for el in algo1.loss], label='pix 64')
-plt.semilogy([el[0] for el in algo2.loss], label='pix 1')
-plt.legend()
-plt.show()
-# # %%
-
-# %%
-
-def prova (**kwargs):
-    if len(kwargs) == 0:
-        return 0
-    else:
-        return 1
-
-print(prova(a=1,b=2))
+# print(prova(a=1,b=2))
 
 # %%
