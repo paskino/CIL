@@ -3,13 +3,17 @@
 from cil.utilities import dataexample
 from cil.optimisation.algorithms import PDHG
 from cil.optimisation.functions import L2NormSquared, MixedL21Norm, IndicatorBox,\
-    ZeroFunction, BlockFunction
+    ZeroFunction, BlockFunction, TotalVariation
 from cil.optimisation.operators import GradientOperator, BlockOperator
 from cil.plugins.tigre import ProjectionOperator
 from cil.plugins.astra import ProjectionOperator as POA
 from cil.plugins.astra import FBP
 from cil.utilities.display import show2D
 from cil.io import NEXUSDataWriter
+import matplotlib.pyplot as plt
+
+
+#%%
 def extract_single_line(data, **kwargs):
     try:
         geometry = data.geometry
@@ -62,6 +66,7 @@ def line_plot(data, line_coords=None, label=None, title=None, color=None, size=(
 
     '''
     kwargs = {}
+    
     for i, el in enumerate(line_coords):
         kwargs[el[0]] = el[1]
     data_plot = []
@@ -107,14 +112,18 @@ data.log(out=data)
 data *= -1
 data.reorder('astra')
 
-# gt = gt3d.get_slice(vertical='centre')
-gt = gt3d
+
+# 2D example
+gt = gt3d.get_slice(vertical='centre')
+data = data.get_slice(vertical='centre')
+
+# gt = gt3d
 #%%
 fbp_recon = FBP(data.geometry.get_ImageGeometry(), data.geometry)(data)
 show2D([fbp_recon, gt], cmap='plasma')
 
 #%%
-alpha = 0.12
+alpha = 1
 # %%
 
 # problem 1 original pixel size
@@ -176,7 +185,7 @@ class ScaledArgFunction(Function):
 #%%        
 
 F = BlockFunction(
-    # A1.norm() * L2NormSquared(b=data),
+    # A1.norm() * L2NormSquared(b=data), 
     # g1.norm() * MixedL21Norm()
     ScaledArgFunction( L2NormSquared(b=data/A1.norm()), A1.norm()),
     ScaledArgFunction( MixedL21Norm(), g1.norm())
@@ -196,76 +205,201 @@ G = IndicatorBox(lower=0)
 # high alpha + ZeroFunction -> high alpha should converge to the mean value of your data 
 # G = ZeroFunction()
 
-algo1 = PDHG(f=F, g=G, operator=K, max_iteration=1000, update_objective_interval=100,log_file="algo1.nxs")
+algo1 = PDHG(f=F, g=G, operator=K, max_iteration=1000, update_objective_interval=500,log_file="algo1.log")
 
 #%%
-# algo1.max_iteration += 1000
-algo1.run(1000)
+# algo1.max_iteration += 9000
+algo1.run(verbose=2)
 # NEXUSDataWriter(algo1.solution, file_name='algo1.nxs').write()
 #%%
-show2D([algo1.solution * A1.norm(), gt], title=[f'PDHG rescaled {alpha}', 'Ground Truth'],
-       cmap='plasma', fix_range=True)
+show2D([algo1.solution * A1.norm(), gt], title=[f'algo1 {alpha}', 'Ground Truth'],
+       cmap='plasma', fix_range=False)
 
 #%%
-import matplotlib.pyplot as plt
 
-plt.plot(gt.as_array()[64,64,:], label='GT')
-plt.plot(algo1.solution.as_array()[64,64,:]*(A1.norm()), label=f'PDHG {alpha}', color='purple')
-plt.plot(fbp_recon.as_array()[64,64,:], label='FBP', color='r')
+# plt.plot(gt.as_array()[64,64,:], label='GT')
+# plt.plot(algo1.solution.as_array()[64,64,:]*(A1.norm()), label=f'PDHG {alpha}', color='purple')
+# plt.plot(fbp_recon.as_array()[64,64,:], label='FBP', color='r')
+# plt.legend()
+# plt.show()
+
+#%%
+if gt.number_of_dimensions == 3:
+    line_plot([gt, fbp_recon, algo1.solution * A1.norm()], 
+            label=['Ground Truth', 'FBP', 'PDHG + TV + nn Operator Rescaled'],
+            line_coords=(('horizontal_x',64), ('vertical',64)), 
+            title=f'Comparison alpha {alpha}',
+            color=('cyan', 'purple', 'orange'), 
+            size=(15,9))
+elif gt.number_of_dimensions == 2:
+    plt.plot(gt.as_array()[64,:], label='GT')
+    plt.plot(algo1.solution.as_array()[64,:]*(A1.norm()), label=f'algo1 {alpha}', color='purple')
+    plt.plot(fbp_recon.as_array()[64,:], label='FBP', color='r')
+    plt.legend()
+    plt.show()
+# %%
+############# IMPLICIT TV
+from cil.plugins.ccpi_regularisation.functions import FGP_TV
+Fi = L2NormSquared(b=data)
+Gi = alpha * TotalVariation()
+algo2 = PDHG(f=Fi, g=Gi, operator=A1, max_iteration=1000, 
+             update_objective_interval=100, log_file='algo2.log')
+
+#%%
+algo2.run(300, verbose=2, print_interval=100)
+#%%
+show2D([algo2.solution, gt], title=[f'algo2 {alpha}', 'Ground Truth'],
+       cmap='plasma', fix_range=False)
+#%%
+
+if gt.number_of_dimensions == 3:
+    line_plot([gt, fbp_recon, algo1.solution * A1.norm()], 
+            label=['Ground Truth', 'FBP', 'algo2'],
+            line_coords=(('horizontal_x',64), ('vertical',64)), 
+            title=f'Comparison alpha {alpha}',
+            color=('cyan', 'purple', 'orange'), 
+            size=(15,9))
+elif gt.number_of_dimensions == 2:
+    plt.plot(gt.as_array()[64,:], label='GT')
+    plt.plot(algo2.solution.as_array()[64,:], label=f'algo2 {alpha} Implicit', color='purple')
+    plt.plot(fbp_recon.as_array()[64,:], label='FBP', color='r')
+    plt.legend()
+    plt.show()
+
+
+
+#%%
+######################### PIXEL SIZE
+ag3 = data.geometry.copy()
+ag3.pixel_size_h = 1.
+# ag3.pixel_size_v = 1.
+
+data3 = ag3.allocate(None)
+data3.fill(data)
+ig3 = ag3.get_ImageGeometry()
+
+A3 = ProjectionOperator(ig3, ag3)
+g3 = GradientOperator(ig3)
+
+F3 = BlockFunction(
+    L2NormSquared(b=data3),
+    MixedL21Norm()
+    # ScaledArgFunction( L2NormSquared(b=data/A1.norm()), A1.norm()),
+    # ScaledArgFunction( MixedL21Norm(), g1.norm())
+)
+
+
+K3 = BlockOperator(
+    A3, 
+    alpha * g3
+    )
+
+
+# high alpha + Indicator box -> zero solution
+# small alpha —> Ground truth
+G3 = IndicatorBox(lower=0)
+
+# high alpha + ZeroFunction -> high alpha should converge to the mean value of your data 
+# G = ZeroFunction()
+
+algo3 = PDHG(f=F3, g=G3, operator=K3, max_iteration=10000, update_objective_interval=500,log_file="algo3.log")
+
+#%%
+# algo1.max_iteration += 9000
+algo3.run(1000, verbose=2)
+# NEXUSDataWriter(algo1.solution, file_name='algo1.nxs').write()
+#%%
+show2D([algo3.solution, gt], title=[f'algo3 {alpha}', 'Ground Truth'],
+       cmap='plasma', fix_range=False)
+#%%
+plt.plot(gt.as_array()[64,:], label='GT')
+plt.plot(algo3.solution.as_array()[64,:]/data.geometry.pixel_size_h, label=f'algo3 {alpha}', color='purple')
+plt.plot(fbp_recon.as_array()[64,:], label='FBP', color='r')
 plt.legend()
 plt.show()
-
 #%%
 
-#%%
-line_plot([gt, fbp_recon, algo1.solution * A1.norm()], 
-           label=['Ground Truth', 'FBP', 'PDHG + TV + nn'],
-           line_coords=(('horizontal_x',64), ('vertical',64)), 
-           title=f'Comparison alpha {alpha}',
-           color=('cyan', 'purple', 'orange'), 
-           size=(15,9))
-# %%
 
+########################################################################
 # problem 2 rescale into alpha
 
-alpha_tilde = alpha * ((A1.norm()**2) / g1.norm())
+alpha_tilde = alpha * g1.norm()
 
-F2 = BlockFunction(
-    L2NormSquared(b=data),
+F4 = BlockFunction(
+    L2NormSquared(b=data/A1.norm()),
     MixedL21Norm()
 )
 
 
-K2 = BlockOperator(
-    A1, 
-    alpha_tilde * g1
+K4 = BlockOperator(
+    (1/A1.norm()) * A1, 
+    alpha_tilde * ((1/g1.norm()) * g1)
     )
 
-G2 = IndicatorBox(lower=0)
+G4 = IndicatorBox(lower=0)
 # G2 = ZeroFunction()
 
-algo2 = PDHG(f=F2, g=G2, operator=K2, max_iteration=1000, update_objective_interval=100,log_file="algo1.nxs")
+algo4 = PDHG(f=F4, g=G4, operator=K4, max_iteration=1000, update_objective_interval=100,log_file="algo4.log")
 
 #%%
 # algo1.max_iteration += 1000
-algo2.run(1000)
+algo4.run(1000)
 #%%
-show2D([algo1.solution*A1.norm(), algo2.solution, gt], 
-    title=[f'Operator rescale Matthias {alpha}', f'Operator Rescale Vaggelis {alpha}', 'GT'] ,
+show2D([algo4.solution, gt], 
+    title=[ f'algo4 {alpha}', 'GT'] ,
      cmap='plasma', fix_range=False)
 #%% 
-line_plot([gt, fbp_recon, algo1.solution * A1.norm(), algo2.solution], 
-           label=['Ground Truth', 'FBP', 'Matthias PDHG + TV + nn', 'Vaggelis PDHG + TV + nn'],
-           line_coords=(('horizontal_x',64), ('vertical',64)), 
-           title=f'Comparison alpha {alpha}'
-           )
+plt.plot(gt.as_array()[64,:], label='GT')
+plt.plot(algo4.solution.as_array()[64,:], label=f'algo4 {alpha}', color='purple')
+plt.plot(fbp_recon.as_array()[64,:], label='FBP', color='r')
+plt.legend()
+plt.show()
 #%%
 
-# Save the solutions
-NEXUSDataWriter(file_name=f"Matthias_PDHG_rescale_alpha_{alpha}.nxs", 
-                data=(algo1.solution * A1.norm())).write()
-NEXUSDataWriter(file_name=f"Vaggelis_PDHG_rescale_L2NormSquared_alpha_{alpha}.nxs",
-                data=algo2.solution).write()
+########################## alpha on function
+
+F5 = BlockFunction(
+    # L2NormSquared(b=data), 
+    # alpha * MixedL21Norm()
+    ScaledArgFunction( L2NormSquared(b=data/A1.norm()), A1.norm()),
+    ScaledArgFunction( alpha * MixedL21Norm(), g1.norm())
+)
+
+
+K5 = BlockOperator(
+    A1, 
+    g1
+    )
+
+
+# high alpha + Indicator box -> zero solution
+# small alpha —> Ground truth
+G5 = IndicatorBox(lower=0)
+
+# high alpha + ZeroFunction -> high alpha should converge to the mean value of your data 
+# G = ZeroFunction()
+
+algo5 = PDHG(f=F5, g=G5, operator=K5, max_iteration=1000, update_objective_interval=500,log_file="algo5.log")
+
+#%%
+# algo1.max_iteration += 9000
+algo5.run(verbose=2)
+#%%
+show2D([algo5.solution, gt], 
+    title=[ f'algo5 {alpha}', 'GT'] ,
+     cmap='plasma', fix_range=False)
+#%% 
+plt.plot(gt.as_array()[64,:], label='GT')
+plt.plot(algo5.solution.as_array()[64,:]* A1.norm(), label=f'algo5 {alpha}', color='purple')
+plt.plot(fbp_recon.as_array()[64,:], label='FBP', color='r')
+plt.legend()
+plt.show()
+# # Save the solutions
+# NEXUSDataWriter(file_name=f"Matthias_PDHG_rescale_alpha_{alpha}.nxs", 
+#                 data=(algo1.solution * A1.norm())).write()
+# #%%                
+# NEXUSDataWriter(file_name=f"Vaggelis_PDHG_rescale_L2NormSquared_alpha_{alpha}.nxs",
+#                 data=algo2.solution).write()
 
 # problem 2 same data pixel size = 1
 # ag2 = data.geometry.copy()
