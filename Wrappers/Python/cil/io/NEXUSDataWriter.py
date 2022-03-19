@@ -136,15 +136,28 @@ class NEXUSDataWriter(object):
             nxentry.attrs['NX_class'] = 'NXentry'
 
             #create empty data entry
-            if self.chunks is not None and self.h5compress is not None:
-                ds_data = f.create_dataset('entry1/tomo_entry/data/data',shape=self.data.shape, dtype=self.dtype, 
+            if self.chunks is not None:
+                if self.h5compress[0] is None:
+                    ds_data = f.create_dataset('entry1/tomo_entry/data/data',shape=self.data.shape, dtype=self.dtype, 
+                                           chunks=self.chunks )                  
+                elif self.h5compress[0] == 'gzip':
+                    ds_data = f.create_dataset('entry1/tomo_entry/data/data',shape=self.data.shape, dtype=self.dtype, 
                                            chunks=self.chunks, 
                                            compression=self.h5compress[0], 
                                            compression_opts=self.h5compress[1], 
                                            shuffle=self.h5compress[2]
                                            )                  
+                elif self.h5compress[0] == 'lzf':
+                    ds_data = f.create_dataset('entry1/tomo_entry/data/data',shape=self.data.shape, dtype=self.dtype, 
+                                           chunks=self.chunks, 
+                                           compression=self.h5compress[0], 
+                                           shuffle=self.h5compress[2]
+                                           )                  
+                
+
             else:
-                ds_data = f.create_dataset('entry1/tomo_entry/data/data',shape=self.data.shape, dtype=self.dtype)
+                ds_data = f.create_dataset('entry1/tomo_entry/data/data',shape=self.data.shape, 
+                                           dtype=self.dtype)
 
             if self.compress:
                 ds_data.attrs['scale'] = scale
