@@ -271,7 +271,7 @@ elif gt.number_of_dimensions == 2:
 #%%
 ######################### PIXEL SIZE
 ag3 = data.geometry.copy()
-ag3.pixel_size_h = 1.
+# ag3.pixel_size_h = 1.
 # ag3.pixel_size_v = 1.
 
 data3 = ag3.allocate(None)
@@ -281,44 +281,102 @@ ig3 = ag3.get_ImageGeometry()
 A3 = ProjectionOperator(ig3, ag3)
 g3 = GradientOperator(ig3)
 
-F3 = BlockFunction(
-    L2NormSquared(b=data3),
-    MixedL21Norm()
-    # ScaledArgFunction( L2NormSquared(b=data/A1.norm()), A1.norm()),
-    # ScaledArgFunction( MixedL21Norm(), g1.norm())
-)
+# F3 = BlockFunction(
+#     L2NormSquared(b=data3),
+#     MixedL21Norm()
+#     # ScaledArgFunction( L2NormSquared(b=data/A1.norm()), A1.norm()),
+#     # ScaledArgFunction( MixedL21Norm(), g1.norm())
+# )
+F3 = L2NormSquared(b=data3)
 
-
-K3 = BlockOperator(
-    A3, 
-    alpha * g3
-    )
-
+# K3 = BlockOperator(
+#     A3, 
+#     alpha * g3
+#     )
+K3 = A3
 
 # high alpha + Indicator box -> zero solution
 # small alpha —> Ground truth
-G3 = IndicatorBox(lower=0)
+# G3 = IndicatorBox(lower=0)
+G3 = ZeroFunction()
 
 # high alpha + ZeroFunction -> high alpha should converge to the mean value of your data 
 # G = ZeroFunction()
 
-algo3 = PDHG(f=F3, g=G3, operator=K3, max_iteration=10000, update_objective_interval=500,log_file="algo3.log")
+algo3 = PDHG(f=F3, g=G3, operator=K3, max_iteration=10000, 
+   update_objective_interval=500,log_file="algo3.log")
 
 #%%
 # algo1.max_iteration += 9000
-algo3.run(1000, verbose=2)
+algo3.run(verbose=2)
 # NEXUSDataWriter(algo1.solution, file_name='algo1.nxs').write()
 #%%
 show2D([algo3.solution, gt], title=[f'algo3 {alpha}', 'Ground Truth'],
        cmap='plasma', fix_range=False)
 #%%
 plt.plot(gt.as_array()[64,:], label='GT')
-plt.plot(algo3.solution.as_array()[64,:]/data.geometry.pixel_size_h, label=f'algo3 {alpha}', color='purple')
+plt.plot(algo3.solution.as_array()[64,:], label=f'algo3 {alpha}', color='purple')
 plt.plot(fbp_recon.as_array()[64,:], label='FBP', color='r')
 plt.legend()
 plt.show()
 #%%
 
+# try CGLS
+from cil.optimisation.algorithms import CGLS
+
+initial = gt.geometry.allocate(0)
+algo4 = CGLS(initial=initial, operator = A3, data=data3, max_iteration=100, update_objective_interval=1)
+#%%
+algo4.run(1)
+
+#%%
+show2D([algo4.solution, gt], title=[f'CGLS {alpha}', 'Ground Truth'],
+       cmap='plasma', fix_range=False)
+#%%
+plt.plot(gt.as_array()[64,:], label='GT')
+plt.plot(algo4.solution.as_array()[64,:], label=f'CGLS {alpha}', color='purple')
+plt.plot(fbp_recon.as_array()[64,:], label='FBP', color='r')
+plt.legend()
+plt.show()
+#%%
+# try FISTA
+from cil.optimisation.algorithms import FISTA
+from cil.optimisation.functions import LeastSquares
+
+initial = gt.geometry.allocate(0)
+algo5 = FISTA(initial=initial, f = LeastSquares(A=A3, b=data3), max_iteration=1000, update_objective_interval=10)
+#%%
+algo5.run()
+
+#%%
+show2D([algo5.solution, gt], title=[f'FISTA {alpha}', 'Ground Truth'],
+       cmap='plasma', fix_range=False)
+#%%
+plt.plot(gt.as_array()[64,:], label='GT')
+plt.plot(algo5.solution.as_array()[64,:], label=f'FISTA {alpha}', color='purple')
+plt.plot(fbp_recon.as_array()[64,:], label='FBP', color='r')
+plt.legend()
+plt.show()
+
+#%%
+# try GD
+from cil.optimisation.algorithms import GD
+from cil.optimisation.functions import LeastSquares
+
+initial = gt.geometry.allocate(0)
+algo5 = GD(initial=initial, f = LeastSquares(A=A3, b=data3), max_iteration=1000, update_objective_interval=10)
+#%%
+algo5.run()
+
+#%%
+show2D([algo5.solution, gt], title=[f'FISTA {alpha}', 'Ground Truth'],
+       cmap='plasma', fix_range=False)
+#%%
+plt.plot(gt.as_array()[64,:], label='GT')
+plt.plot(algo5.solution.as_array()[64,:], label=f'FISTA {alpha}', color='purple')
+plt.plot(fbp_recon.as_array()[64,:], label='FBP', color='r')
+plt.legend()
+plt.show()
 
 ########################################################################
 # problem 2 rescale into alpha
