@@ -75,6 +75,13 @@ class TotalGeneralisedVariation(Function):
             Prints primal, dual and primal-dual objectives of the :class:`PDHG` algorithm.
         update_objective_interval : :obj:`int`, default = :code:`max_iteration`
             Updates the objectives of the :class:`PDHG` algorithm.
+        alpha1 : :obj:`float`, default 1.0. Parameter to control the first-order term
+        alpha2 : :obj:`float`, default 2.0. Parameter to control the second-order term
+        update_objective_interval : :obj:`int`, default 50.
+            Sets every how many iterations the internal solver will evaluate the objective function.
+        warm_start : :obj:`bool`, default False
+            If set to True it will start the internal PDHG algorithm to the solution of the previous iterate.
+        
 
 
         Examples
@@ -94,15 +101,15 @@ class TotalGeneralisedVariation(Function):
             
     def __init__(self,
                  reg_parameter=1.0,
-                 alpha1 = 1.0,
-                 alpha0 = 2.0,
-                 max_iteration = 100, 
-                 update_objective_interval = 50,
-                 correlation = "Space",
-                 backend = "c",
-                 split = False,
-                 verbose = 0,                  
-                 warmstart=False):
+                 alpha1=1.0,
+                 alpha0=2.0,
+                 max_iteration=100, 
+                 update_objective_interval=50,
+                 correlation="Space",
+                 backend="c",
+                 split=False,
+                 verbose=0,                  
+                 warm_start=False):
         
         super(TotalGeneralisedVariation, self).__init__(L = None)
 
@@ -112,7 +119,7 @@ class TotalGeneralisedVariation(Function):
         self.reg_parameter = reg_parameter
                 
         # Iterations for PDHG_TGV
-        self.iterations = max_iteration
+        self.max_iteration = max_iteration
         
         # correlation space or spacechannels
         self.correlation = correlation
@@ -127,9 +134,9 @@ class TotalGeneralisedVariation(Function):
         self.update_objective_interval = update_objective_interval
 
         # warm-start
-        self.warmstart  = warmstart
-        if self.warmstart:
-            self.hasstarted = False        
+        self.warm_start  = warm_start
+        if self.warm_start:
+            self.has_started = False        
 
 
     def __call__(self, x):
@@ -142,7 +149,7 @@ class TotalGeneralisedVariation(Function):
             tmp = self.f(self.pdhg.operator.direct(self.pdhg.solution))
             return tmp
 
-    def _setup_solver(self, x, tau=1.0):
+    def _setup_and_run_solver(self, x, tau=1.0):
 
         # tau_sqrt = np.sqrt(tau)
         
@@ -156,55 +163,59 @@ class TotalGeneralisedVariation(Function):
                         
         if not hasattr(self, 'operator'):
             
-            self.Gradient = GradientOperator(self.domain, correlation = self.correlation, backend = self.backend)  
-            self.SymGradient = SymmetrisedGradientOperator(self.Gradient.range, correlation = self.correlation, backend = self.backend)  
-            self.ZeroOperator = ZeroOperator(self.domain, self.SymGradient.range)
-            self.IdentityOperator = - IdentityOperator(self.Gradient.range)
+            grad = GradientOperator(self.domain, correlation = self.correlation, backend = self.backend)  
+            sym_grad = SymmetrisedGradientOperator(grad.range_geometry(), correlation = self.correlation, backend = self.backend)  
+            zero = ZeroOperator(self.domain, sym_grad.range_geometry())
+            identity = - IdentityOperator(grad.range_geometry())
 
             #    BlockOperator = [ Gradient      - Identity  ]
             #                    [ ZeroOperator   SymGradient] 
-            self.operator = BlockOperator(self.Gradient, self.IdentityOperator, 
-                                          self.ZeroOperator,self.SymGradient,shape=(2,2)) 
+            self.operator = BlockOperator(grad, identity, 
+                                          zero, sym_grad, 
+                                          shape=(2,2)) 
 
         if not all(hasattr(self, attr) for attr in ["g"]):
-            self.g1 = 0.5*L2NormSquared(b = x)
-            self.g2 = ZeroFunction()               
-            self.g = BlockFunction(self.g1, self.g2)
+            g1 = 0.5*L2NormSquared(b = x)
+            g2 = ZeroFunction()               
+            self.g = BlockFunction(g1, g2)
 
 
         if not all(hasattr(self, attr) for attr in ["f"]):
             # parameters to set up PDHG algorithm
-            self.f1 = tau*self.alpha1 * MixedL21Norm()
-            self.f2 = tau*self.alpha0 * MixedL21Norm()
-            self.f = BlockFunction(self.f1, self.f2)  
+            f1 = tau*self.alpha1 * MixedL21Norm()
+            f2 = tau*self.alpha0 * MixedL21Norm()
+            self.f = BlockFunction(f1, f2)  
          
-        if self.warmstart:     
-            if self.hasstarted:
-                tmp_initial = self.pdhg.solution
+        if self.warm_start:     
+            if self.has_started:
+                tmp_initial = self.tmp_initial
             else:
                 tmp_initial = None
-                self.hasstarted = True 
+                self.has_started = True 
         else:
             tmp_initial = None
 
         # setup PDHG                           
-        self.pdhg = PDHG(initial = tmp_initial, f = self.f, g=self.g, operator = self.operator,
+        pdhg = PDHG(initial = tmp_initial, f = self.f, g=self.g, operator = self.operator,
                 update_objective_interval = self.update_objective_interval,
-                max_iteration = self.iterations) 
-        self.pdhg.run(verbose=self.verbose) 
-
+                max_iteration = self.max_iteration) 
+        pdhg.run(verbose=self.verbose)
+        return pdhg.solution
                                      
     def proximal(self, x, tau = 1.0, out = None):
+        '''Returns the proximal of TotalGeneralisedVariation at x'''
+        tmp_out = self._setup_and_run_solver(x, tau)
         
-        self._setup_solver(x, tau)  
-                    
+        if self.warm_start:
+            # save solver solution to be used in _setup_and_run_solver
+            self.tmp_initial = tmp_out
         if out is None:
-            return self.pdhg.solution[0]
+            return tmp_out[0]
         else:
-            out.fill(self.pdhg.solution[0])            
-
+            out.fill(tmp_out[0])
+                    
     def convex_conjugate(self,x):  
-        
+        ''''''
         return 0.0
     
     

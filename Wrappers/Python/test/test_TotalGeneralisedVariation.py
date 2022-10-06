@@ -75,7 +75,7 @@ class TestTotalGeneralisedVariation(unittest.TestCase):
         ig = ag.get_ImageGeometry()
 
         # Create projection operator using Astra-Toolbox. Available CPU/CPU
-        A = ProjectionOperator(ig, ag, device = 'cpu')    
+        A = ProjectionOperator(ig, ag, device = 'gpu')    
 
         # Get phantom
         phantom = dataexample.SIMPLE_PHANTOM_2D.get(size=(N, N))
@@ -87,6 +87,7 @@ class TestTotalGeneralisedVariation(unittest.TestCase):
         gaussian_var = 0.5
         gaussian_mean = 0
 
+        np.seed(1)
         n1 = np.random.normal(gaussian_mean, gaussian_var, size = ag.shape)
                             
         sino = ag.allocate()
@@ -108,11 +109,11 @@ class TestTotalGeneralisedVariation(unittest.TestCase):
         tmp_initial = ig.allocate()
 
         fista_cil = FISTA(initial=tmp_initial, f=f, g=g_cil, max_iteration=100)
-        fista_cil.run()
+        fista_cil.run(verbose=0)
 
         fista_ccpi_regtk = FISTA(initial=tmp_initial, f=f, g=g_ccpi_regtk, 
                                 update_objective_interval=50, max_iteration=100)
-        fista_ccpi_regtk.run() 
+        fista_ccpi_regtk.run(verbose=0) 
 
         np.testing.assert_allclose(fista_cil.solution.array, fista_ccpi_regtk.solution.array, atol=1e-2) 
        
