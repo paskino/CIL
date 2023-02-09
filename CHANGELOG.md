@@ -1,4 +1,5 @@
 * Next
+  - Removed wrong warning about deprecated use of creator of ImageData and AcquisitionData
   - Extended IndicatorBox to behave as IndicatorBoxPixelwise by passing masks in lower and upper bounds
   - Implemented IndicatorBox in numba and numpy
   - Dropped support for Python 3.6 and NumPy 1.15
