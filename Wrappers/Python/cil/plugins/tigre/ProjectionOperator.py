@@ -137,7 +137,7 @@ class ProjectionOperator(LinearOperator):
             arr_out = np.squeeze(arr_out, axis=0)
 
         if out is None:
-            out = AcquisitionData(arr_out, deep_copy=False, geometry=self._range_geometry.copy(), suppress_warning=True)
+            out = AcquisitionData(arr_out, deep_copy=False, geometry=self._range_geometry.copy())
             return out
         else:
             out.fill(arr_out)
@@ -166,7 +166,7 @@ class ProjectionOperator(LinearOperator):
             arr_out = self.__call_Atb(data)
 
         if out is None:
-            out = ImageData(arr_out, deep_copy=False, geometry=self._domain_geometry.copy(), suppress_warning=True)
+            out = ImageData(arr_out, deep_copy=False, geometry=self._domain_geometry.copy())
             return out
         else:
             out.fill(arr_out)

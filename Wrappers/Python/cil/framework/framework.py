@@ -294,8 +294,7 @@ class ImageGeometry(object):
             raise ValueError("Deprecated: 'dimension_labels' cannot be set with 'allocate()'. Use 'geometry.set_labels()' to modify the geometry before using allocate.")
 
         out = ImageData(geometry=self.copy(), 
-                            dtype=dtype, 
-                            suppress_warning=True)
+                            dtype=dtype)
 
         if isinstance(value, Number):
             # it's created empty, so we make it 0
@@ -2139,7 +2138,7 @@ class AcquisitionGeometry(object):
         
         if self.dimension == '2D':
             if offset2 is not None:
-                logging.WARNING("Only offset1 is being used")
+                logging.warning("Only offset1 is being used")
             self.set_centre_of_rotation(offset1)
         
         if offset2 is None or offset1 == offset2:
@@ -2401,8 +2400,7 @@ class AcquisitionGeometry(object):
             raise ValueError("Deprecated: 'dimension_labels' cannot be set with 'allocate()'. Use 'geometry.set_labels()' to modify the geometry before using allocate.")
 
         out = AcquisitionData(geometry=self.copy(), 
-                                dtype=dtype,
-                                suppress_warning=True)
+                                dtype=dtype)
 
         if isinstance(value, Number):
             # it's created empty, so we make it 0
@@ -2563,7 +2561,7 @@ class DataContainer(object):
                     new_array = new_array.take(indices=value, axis=axis)
 
         if new_array.ndim > 1:
-            return DataContainer(new_array, False, dimension_labels_list, suppress_warning=True)
+            return DataContainer(new_array, False, dimension_labels_list)
         else:
             return VectorData(new_array, dimension_labels=dimension_labels_list)
                     
@@ -2813,8 +2811,7 @@ class DataContainer(object):
             return type(self)(out,
                    deep_copy=False, 
                    dimension_labels=self.dimension_labels,
-                   geometry= None if self.geometry is None else self.geometry.copy(), 
-                   suppress_warning=True)
+                   geometry= None if self.geometry is None else self.geometry.copy())
             
         
         elif issubclass(type(out), DataContainer) and issubclass(type(x2), DataContainer):
@@ -2925,9 +2922,9 @@ class DataContainer(object):
                     return out
                 return
             except RuntimeError as rte:
-                warnings.warn("sapyb defaulting to Python due to: {}".format(rte))
+                logging.warning("sapyb defaulting to Python due to: {}".format(rte))
             except TypeError as te:
-                warnings.warn("sapyb defaulting to Python due to: {}".format(te))
+                logging.warning("sapyb defaulting to Python due to: {}".format(te))
             finally:
                 pass
         
@@ -3058,8 +3055,7 @@ class DataContainer(object):
             return type(self)(out,
                        deep_copy=False, 
                        dimension_labels=self.dimension_labels,
-                       geometry=self.geometry, 
-                       suppress_warning=True)
+                       geometry=self.geometry)
         elif issubclass(type(out), DataContainer):
             if self.check_dimensions(out):
                 kwargs['out'] = out.as_array()
@@ -3213,8 +3209,8 @@ class ImageData(DataContainer):
                  geometry=None, 
                  **kwargs):
 
-        if not kwargs.get('suppress_warning', False):
-            warnings.warn('Direct invocation is deprecated and will be removed in following version. Use allocate from ImageGeometry instead',
+        if 'suppress_warning' in kwargs.keys():
+            warnings.warn('The use of suppress_warning is now deprecated and will be removed in following version.',
               DeprecationWarning)
 
         dtype = kwargs.get('dtype', numpy.float32)
@@ -3276,7 +3272,7 @@ class ImageData(DataContainer):
         if len(out.shape) == 1 or geometry_new is None:
             return out
         else:
-            return ImageData(out.array, deep_copy=False, geometry=geometry_new, suppress_warning=True)                            
+            return ImageData(out.array, deep_copy=False, geometry=geometry_new)                            
 
 
     def apply_circular_mask(self, radius=0.99, in_place=True):
@@ -3387,8 +3383,8 @@ class AcquisitionData(DataContainer):
                  deep_copy=True, 
                  geometry = None,
                  **kwargs):
-        if not kwargs.get('suppress_warning', False):
-            warnings.warn('Direct invocation is deprecated and will be removed in following version. Use allocate from AcquisitionGeometry instead',
+        if 'suppress_warning' in kwargs.keys():
+            warnings.warn('The use of suppress_warning is now deprecated and will be removed in following version.',
               DeprecationWarning)
 
         dtype = kwargs.get('dtype', numpy.float32)
@@ -3446,7 +3442,7 @@ class AcquisitionData(DataContainer):
         if len(out.shape) == 1 or geometry_new is None:
             return out
         else:
-            return AcquisitionData(out.array, deep_copy=False, geometry=geometry_new, suppress_warning=True)
+            return AcquisitionData(out.array, deep_copy=False, geometry=geometry_new)
 
 class Processor(object):
 

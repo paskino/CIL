@@ -420,8 +420,7 @@ class TestDataContainer(CCPiTestClass):
     def test_exp_log(self):
         a0 = numpy.asarray([1. for i in range(2*3*4)])
                 
-        ds0 = DataContainer(numpy.reshape(a0,(2,3,4)), suppress_warning=True)
-        # ds1 = DataContainer(numpy.reshape(a1,(2,3,4)), suppress_warning=True)
+        ds0 = DataContainer(numpy.reshape(a0,(2,3,4)))
         b = ds0.exp().log()
         numpy.testing.assert_allclose(ds0.as_array(), b.as_array())
         

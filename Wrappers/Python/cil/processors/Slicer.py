@@ -150,7 +150,7 @@ class Slicer(DataProcessor):
             if self.force == False:
                 raise ValueError("Cannot calculate system geometry. Use 'force=True' to return DataContainer instead.")
             else:
-                return DataContainer(numpy.squeeze(data.as_array()[tuple(slice_object)]), deep_copy=False, dimension_labels=dimension_labels, suppress_warning=True)
+                return DataContainer(numpy.squeeze(data.as_array()[tuple(slice_object)]), deep_copy=False, dimension_labels=dimension_labels)
 
     def _construct_slice_object(self, roi, n_elements, dimension_labels):
         '''
