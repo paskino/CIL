@@ -18,7 +18,7 @@
 # CIL Developers, listed at: https://github.com/TomographicImaging/CIL/blob/master/NOTICE.txt
 
 import copy
-import numpy
+import numpy as np
 import warnings
 from functools import reduce
 from numbers import Number
@@ -27,6 +27,7 @@ from ctypes import util
 import math
 import weakref
 import logging
+import inspect
 
 from cil.utilities.multiprocessing import NUM_THREADS
 # check for the extension
@@ -124,7 +125,7 @@ class Partitioner(object):
         ags = []
         for mask in indices:
             ag = self.geometry.copy()
-            ag.config.angles.angle_data = numpy.take(self.geometry.angles, mask, axis=0)
+            ag.config.angles.angle_data = np.take(self.geometry.angles, mask, axis=0)
             ags.append(ag)
         
         return BlockGeometry(*ags)
@@ -200,7 +201,7 @@ class Partitioner(object):
             
         for i in range(num_batches):
             out[i].fill(
-                numpy.take(self.array, partition_indices[i], axis=axis)
+                np.take(self.array, partition_indices[i], axis=axis)
             )
         return out
          
@@ -217,10 +218,10 @@ class Partitioner(object):
 
         '''
         if seed is not None:
-            numpy.random.seed(seed)
+            np.random.seed(seed)
         
-        indices = numpy.arange(self.geometry.num_projections)
-        numpy.random.shuffle(indices)
+        indices = np.arange(self.geometry.num_projections)
+        np.random.shuffle(indices)
 
         indices = list(indices)            
         
@@ -382,7 +383,7 @@ class ImageGeometry(object):
         self.channel_labels = None
         self.channel_spacing = 1.0
         self.dimension_labels = kwargs.get('dimension_labels', None)
-        self.dtype = kwargs.get('dtype', numpy.float32)
+        self.dtype = kwargs.get('dtype', np.float32)
 
 
     def get_slice(self,channel=None, vertical=None, horizontal_x=None, horizontal_y=None):
@@ -471,7 +472,7 @@ class ImageGeometry(object):
         :param value: accepts numbers to allocate an uniform array, or a string as 'random' or 'random_int' to create a random array or None.
         :type value: number or string, default None allocates empty memory block, default 0
         :param dtype: numerical type to allocate
-        :type dtype: numpy type, default numpy.float32
+        :type dtype: np type, default np.float32
         '''
 
         dtype = kwargs.get('dtype', self.dtype)
@@ -490,19 +491,19 @@ class ImageGeometry(object):
             if value == ImageGeometry.RANDOM:
                 seed = kwargs.get('seed', None)
                 if seed is not None:
-                    numpy.random.seed(seed)
-                if numpy.iscomplexobj(out.array):
-                    r = numpy.random.random_sample(self.shape) + 1j * numpy.random.random_sample(self.shape)
+                    np.random.seed(seed)
+                if np.iscomplexobj(out.array):
+                    r = np.random.random_sample(self.shape) + 1j * np.random.random_sample(self.shape)
                     out.fill(r)
                 else: 
-                    out.fill(numpy.random.random_sample(self.shape))
+                    out.fill(np.random.random_sample(self.shape))
             elif value == ImageGeometry.RANDOM_INT:
                 seed = kwargs.get('seed', None)
                 if seed is not None:
-                    numpy.random.seed(seed)
+                    np.random.seed(seed)
                 max_value = kwargs.get('max_value', 100)
-                r = numpy.random.randint(max_value,size=self.shape, dtype=numpy.int32)
-                out.fill(numpy.asarray(r, dtype=self.dtype))
+                r = np.random.randint(max_value,size=self.shape, dtype=np.int32)
+                out.fill(np.asarray(r, dtype=self.dtype))
             elif value is None:
                 pass
             else:
@@ -519,9 +520,9 @@ class ComponentDescription(object):
     @staticmethod  
     def create_vector(val):
         try:
-            vec = numpy.asarray(val, dtype=numpy.float64).reshape(len(val))
+            vec = np.asarray(val, dtype=np.float64).reshape(len(val))
         except:
-            raise ValueError("Can't convert to numpy array")
+            raise ValueError("Can't convert to np array")
    
         return vec
 
@@ -530,7 +531,7 @@ class ComponentDescription(object):
         vec = ComponentDescription.create_vector(val)
         dot_product = vec.dot(vec)
         if abs(dot_product)>1e-8:
-            vec = (vec/numpy.sqrt(dot_product))
+            vec = (vec/np.sqrt(dot_product))
         else:
             raise ValueError("Can't return a unit vector of a zero magnitude vector")
         return vec
@@ -639,7 +640,7 @@ class Detector2D(PositionVector):
     @property
     def normal(self):
         try:
-            return numpy.cross(self._direction_x, self._direction_y)
+            return np.cross(self._direction_x, self._direction_y)
         except:
             raise AttributeError
 
@@ -651,7 +652,7 @@ class Detector2D(PositionVector):
         y = ComponentDescription.create_unit_vector(y)
 
         dot_product = x.dot(y)
-        if not numpy.isclose(dot_product, 0):
+        if not np.isclose(dot_product, 0):
             raise ValueError("vectors detector.direction_x and detector.direction_y must be orthogonal")
 
         self._direction_y = y        
@@ -725,11 +726,11 @@ class SystemConfiguration(object):
     
         vec = ComponentDescription.create_unit_vector(vec)
 
-        axis_rotation = numpy.eye(len(vec))
+        axis_rotation = np.eye(len(vec))
 
-        if numpy.allclose(vec[:2],[0,1]):
+        if np.allclose(vec[:2],[0,1]):
             pass
-        elif numpy.allclose(vec[:2],[0,-1]):
+        elif np.allclose(vec[:2],[0,-1]):
             axis_rotation[0][0] = -1
             axis_rotation[1][1] = -1
         else:
@@ -747,20 +748,20 @@ class SystemConfiguration(object):
         vec = ComponentDescription.create_unit_vector(vec)
 
         if len(vec) == 2:
-            return numpy.array([[1, 0],[0, 1]])
+            return np.array([[1, 0],[0, 1]])
 
         elif len(vec) == 3:
-            axis_rotation = numpy.eye(3)
+            axis_rotation = np.eye(3)
 
-            if numpy.allclose(vec,[0,0,1]):
+            if np.allclose(vec,[0,0,1]):
                 pass
-            elif numpy.allclose(vec,[0,0,-1]):
-                axis_rotation = numpy.eye(3)
+            elif np.allclose(vec,[0,0,-1]):
+                axis_rotation = np.eye(3)
                 axis_rotation[1][1] = -1
                 axis_rotation[2][2] = -1
             else:
-                vx = numpy.array([[0, 0, -vec[0]], [0, 0, -vec[1]], [vec[0], vec[1], 0]])
-                axis_rotation = numpy.eye(3) + vx + vx.dot(vx) *  1 / (1 + vec[2])
+                vx = np.array([[0, 0, -vec[0]], [0, 0, -vec[1]], [vec[0], vec[1], 0]])
+                axis_rotation = np.eye(3) + vx + vx.dot(vx) *  1 / (1 + vec[2])
 
         else:
             raise ValueError("Vec must have length 3, got {}".format(len(vec)))
@@ -869,7 +870,7 @@ class Parallel2D(SystemConfiguration):
         rays_perpendicular_detector = ComponentDescription.test_parallel(self.ray.direction, self.detector.normal)
 
         #rotation axis position + ray direction hits detector position
-        if numpy.allclose(self.rotation_axis.position, self.detector.position): #points are equal so on ray path
+        if np.allclose(self.rotation_axis.position, self.detector.position): #points are equal so on ray path
             rotation_axis_centred = True
         else:
             vec_a = ComponentDescription.create_unit_vector(self.detector.position - self.rotation_axis.position)
@@ -934,7 +935,7 @@ class Parallel2D(SystemConfiguration):
 
     def __str__(self):
         def csv(val):
-            return numpy.array2string(val, separator=', ')
+            return np.array2string(val, separator=', ')
         
         repres = "2D Parallel-beam tomography\n"
         repres += "System configuration:\n"
@@ -949,10 +950,10 @@ class Parallel2D(SystemConfiguration):
         if not isinstance(other, self.__class__):
             return False
         
-        if numpy.allclose(self.ray.direction, other.ray.direction) \
-        and numpy.allclose(self.detector.position, other.detector.position)\
-        and numpy.allclose(self.detector.direction_x, other.detector.direction_x)\
-        and numpy.allclose(self.rotation_axis.position, other.rotation_axis.position):
+        if np.allclose(self.ray.direction, other.ray.direction) \
+        and np.allclose(self.detector.position, other.detector.position)\
+        and np.allclose(self.detector.direction_x, other.detector.direction_x)\
+        and np.allclose(self.rotation_axis.position, other.rotation_axis.position):
             return True
         
         return False
@@ -1061,7 +1062,7 @@ class Parallel3D(SystemConfiguration):
         rotation_parallel_detector_y = ComponentDescription.test_parallel(self.rotation_axis.direction, self.detector.direction_y)
 
         #rotation axis to detector is parallel with ray
-        if numpy.allclose(self.rotation_axis.position, self.detector.position): #points are equal so on ray path
+        if np.allclose(self.rotation_axis.position, self.detector.position): #points are equal so on ray path
             rotation_axis_centred = True
         else:
             vec_a = ComponentDescription.create_unit_vector(self.detector.position - self.rotation_axis.position )
@@ -1081,7 +1082,7 @@ class Parallel3D(SystemConfiguration):
 
     def __str__(self):
         def csv(val):
-            return numpy.array2string(val, separator=', ')
+            return np.array2string(val, separator=', ')
 
         repres = "3D Parallel-beam tomography\n"
         repres += "System configuration:\n"
@@ -1098,12 +1099,12 @@ class Parallel3D(SystemConfiguration):
         if not isinstance(other, self.__class__):
             return False
         
-        if numpy.allclose(self.ray.direction, other.ray.direction) \
-        and numpy.allclose(self.detector.position, other.detector.position)\
-        and numpy.allclose(self.detector.direction_x, other.detector.direction_x)\
-        and numpy.allclose(self.detector.direction_y, other.detector.direction_y)\
-        and numpy.allclose(self.rotation_axis.position, other.rotation_axis.position)\
-        and numpy.allclose(self.rotation_axis.direction, other.rotation_axis.direction):
+        if np.allclose(self.ray.direction, other.ray.direction) \
+        and np.allclose(self.detector.position, other.detector.position)\
+        and np.allclose(self.detector.direction_x, other.detector.direction_x)\
+        and np.allclose(self.detector.direction_y, other.detector.direction_y)\
+        and np.allclose(self.rotation_axis.position, other.rotation_axis.position)\
+        and np.allclose(self.rotation_axis.direction, other.rotation_axis.direction):
             
             return True
         
@@ -1118,7 +1119,7 @@ class Parallel3D(SystemConfiguration):
         dp1 = self.rotation_axis.direction.dot(self.ray.direction)
         dp2 = self.rotation_axis.direction.dot(self.detector.direction_x)
 
-        if numpy.isclose(dp1, 0) and numpy.isclose(dp2, 0):
+        if np.isclose(dp1, 0) and np.isclose(dp2, 0):
             temp = self.copy()
 
             #convert to rotation axis reference frame
@@ -1223,7 +1224,7 @@ class Parallel3D(SystemConfiguration):
         vector_pos=p1
         vec_dirn=self.ray.direction
         plane_pos=self.rotation_axis.position
-        plane_normal = numpy.cross(self.detector.direction_x, self.rotation_axis.direction)
+        plane_normal = np.cross(self.detector.direction_x, self.rotation_axis.direction)
 
 
         ratio = (plane_pos - vector_pos).dot(plane_normal) / vec_dirn.dot(plane_normal)
@@ -1296,7 +1297,7 @@ class Cone2D(SystemConfiguration):
         principal_ray_centred = ComponentDescription.test_parallel(vec_src2det, self.detector.normal)
 
         #rotation axis to detector is parallel with centre ray
-        if numpy.allclose(self.rotation_axis.position, self.detector.position): #points are equal
+        if np.allclose(self.rotation_axis.position, self.detector.position): #points are equal
             rotation_axis_centred = True
         else:
             vec_b = ComponentDescription.create_unit_vector(self.detector.position - self.rotation_axis.position )
@@ -1313,7 +1314,7 @@ class Cone2D(SystemConfiguration):
 
     def __str__(self):
         def csv(val):
-            return numpy.array2string(val, separator=', ')
+            return np.array2string(val, separator=', ')
 
         repres = "2D Cone-beam tomography\n"
         repres += "System configuration:\n"
@@ -1328,10 +1329,10 @@ class Cone2D(SystemConfiguration):
         if not isinstance(other, self.__class__):
             return False
         
-        if numpy.allclose(self.source.position, other.source.position) \
-        and numpy.allclose(self.detector.position, other.detector.position)\
-        and numpy.allclose(self.detector.direction_x, other.detector.direction_x)\
-        and numpy.allclose(self.rotation_axis.position, other.rotation_axis.position):
+        if np.allclose(self.source.position, other.source.position) \
+        and np.allclose(self.detector.position, other.detector.position)\
+        and np.allclose(self.detector.direction_x, other.detector.direction_x)\
+        and np.allclose(self.rotation_axis.position, other.rotation_axis.position):
             return True
         
         return False
@@ -1342,9 +1343,9 @@ class Cone2D(SystemConfiguration):
     def calculate_magnification(self):
 
         ab = (self.rotation_axis.position - self.source.position)
-        dist_source_center = float(numpy.sqrt(ab.dot(ab)))
+        dist_source_center = float(np.sqrt(ab.dot(ab)))
 
-        ab_unit = ab / numpy.sqrt(ab.dot(ab))
+        ab_unit = ab / np.sqrt(ab.dot(ab))
 
         n = self.detector.normal
 
@@ -1494,7 +1495,7 @@ class Cone3D(SystemConfiguration):
         rotation_parallel_detector_y = ComponentDescription.test_parallel(self.rotation_axis.direction, self.detector.direction_y)
 
         #rotation axis to detector is parallel with centre ray
-        if numpy.allclose(self.rotation_axis.position, self.detector.position): #points are equal
+        if np.allclose(self.rotation_axis.position, self.detector.position): #points are equal
             rotation_axis_centred = True
         else:
             vec_b = ComponentDescription.create_unit_vector(self.detector.position - self.rotation_axis.position )
@@ -1518,7 +1519,7 @@ class Cone3D(SystemConfiguration):
         dp1 = self.rotation_axis.direction.dot(self.detector.normal)
         dp2 = self.rotation_axis.direction.dot(self.detector.direction_x)
         
-        if numpy.isclose(dp1, 0) and numpy.isclose(dp2, 0):
+        if np.isclose(dp1, 0) and np.isclose(dp2, 0):
             temp = self.copy()
             temp.align_reference_frame()
             source_position = temp.source.position[0:2]
@@ -1532,7 +1533,7 @@ class Cone3D(SystemConfiguration):
         
     def __str__(self):
         def csv(val):
-            return numpy.array2string(val, separator=', ')
+            return np.array2string(val, separator=', ')
 
         repres = "3D Cone-beam tomography\n"
         repres += "System configuration:\n"
@@ -1549,12 +1550,12 @@ class Cone3D(SystemConfiguration):
         if not isinstance(other, self.__class__):
             return False
         
-        if numpy.allclose(self.source.position, other.source.position) \
-        and numpy.allclose(self.detector.position, other.detector.position)\
-        and numpy.allclose(self.detector.direction_x, other.detector.direction_x)\
-        and numpy.allclose(self.detector.direction_y, other.detector.direction_y)\
-        and numpy.allclose(self.rotation_axis.position, other.rotation_axis.position)\
-        and numpy.allclose(self.rotation_axis.direction, other.rotation_axis.direction):
+        if np.allclose(self.source.position, other.source.position) \
+        and np.allclose(self.detector.position, other.detector.position)\
+        and np.allclose(self.detector.direction_x, other.detector.direction_x)\
+        and np.allclose(self.detector.direction_y, other.detector.direction_y)\
+        and np.allclose(self.rotation_axis.position, other.rotation_axis.position)\
+        and np.allclose(self.rotation_axis.direction, other.rotation_axis.direction):
             
             return True
         
@@ -1563,9 +1564,9 @@ class Cone3D(SystemConfiguration):
     def calculate_magnification(self):
     
         ab = (self.rotation_axis.position - self.source.position)
-        dist_source_center = float(numpy.sqrt(ab.dot(ab)))
+        dist_source_center = float(np.sqrt(ab.dot(ab)))
 
-        ab_unit = ab / numpy.sqrt(ab.dot(ab))
+        ab_unit = ab / np.sqrt(ab.dot(ab))
 
         n = self.detector.normal
 
@@ -1666,7 +1667,7 @@ class Cone3D(SystemConfiguration):
         sp2 = p2 - self.source.position
 
         #find vector intersection with a plane defined by rotate axis (pos and dir) and det_x direction
-        plane_normal = numpy.cross(self.rotation_axis.direction, self.detector.direction_x)
+        plane_normal = np.cross(self.rotation_axis.direction, self.detector.direction_x)
 
         ratio = (self.rotation_axis.position - self.source.position).dot(plane_normal) / sp1.dot(plane_normal)
         p1_on_plane = self.source.position + sp1 * ratio
@@ -1721,7 +1722,7 @@ class Panel(object):
         if num_pixels_temp[0] < 1 or num_pixels_temp[1] < 1:
             raise ValueError('num_pixels (x,y) must be >= (1,1). Got {}'.format(num_pixels_temp))
         else:
-            self._num_pixels = numpy.array(num_pixels_temp, dtype=numpy.int16)
+            self._num_pixels = np.array(num_pixels_temp, dtype=np.int16)
 
     @property
     def pixel_size(self):
@@ -1756,7 +1757,7 @@ class Panel(object):
             if pixel_size_temp[0] <= 0 or pixel_size_temp[1] <= 0:
                 raise ValueError('pixel_size (x,y) at must be > (0.,0.). Got {}'.format(pixel_size_temp)) 
 
-        self._pixel_size = numpy.array(pixel_size_temp)
+        self._pixel_size = np.array(pixel_size_temp)
 
     @property
     def origin(self):
@@ -1782,8 +1783,8 @@ class Panel(object):
         if not isinstance(other, self.__class__):
             return False
         
-        if numpy.array_equal(self.num_pixels, other.num_pixels) \
-            and numpy.allclose(self.pixel_size, other.pixel_size) \
+        if np.array_equal(self.num_pixels, other.num_pixels) \
+            and np.allclose(self.pixel_size, other.pixel_size) \
             and self.origin == other.origin:   
             return True
         
@@ -1894,7 +1895,7 @@ class Angles(object):
 
             finally:
                 try:
-                    self._angle_data = numpy.asarray(val, dtype=numpy.float32)
+                    self._angle_data = np.asarray(val, dtype=np.float32)
                 except:
                     raise ValueError('angle_data expected to be a list of floats') 
 
@@ -1926,7 +1927,7 @@ class Angles(object):
         repres = "Acquisition description:\n"
         repres += "\tNumber of positions: {0}\n".format(self.num_positions)
         num_print=min(20,self.num_positions)    
-        repres += "\tAngles 0-{0} in {1}s:\n{2}\n".format(num_print, self.angle_unit, numpy.array2string(self.angle_data[0:num_print], separator=', '))
+        repres += "\tAngles 0-{0} in {1}s:\n{2}\n".format(num_print, self.angle_unit, np.array2string(self.angle_data[0:num_print], separator=', '))
         return repres   
 
     def __eq__(self, other):
@@ -1940,7 +1941,7 @@ class Angles(object):
         if self.initial_angle != other.initial_angle:
             return False
 
-        if not numpy.allclose(self.angle_data, other.angle_data):
+        if not np.allclose(self.angle_data, other.angle_data):
             return False
          
         return True
@@ -2175,7 +2176,7 @@ class AcquisitionGeometry(object):
 
 
     def __init__(self):
-        self._dtype = numpy.float32
+        self._dtype = np.float32
 
 
     def get_centre_of_rotation(self, distance_units='default', angle_units='radian'):
@@ -2230,7 +2231,7 @@ class AcquisitionGeometry(object):
             angle = angle_rad
             ang_units = 'radian'
         elif angle_units == 'degree':
-            angle = numpy.degrees(angle_rad)
+            angle = np.degrees(angle_rad)
             ang_units = 'degree'
         else:
             raise ValueError("`angle_units` is not recognised. Must be 'radian' or 'degree'. Got {}".format(angle_units))
@@ -2275,7 +2276,7 @@ class AcquisitionGeometry(object):
         if angle_units == 'radian':
             angle_rad = angle
         elif angle_units == 'degree':
-            angle_rad = numpy.radians(angle)
+            angle_rad = np.radians(angle)
         else:
             raise ValueError("`angle_units` is not recognised. Must be 'radian' or 'degree'. Got {}".format(angle_units))
 
@@ -2532,11 +2533,11 @@ class AcquisitionGeometry(object):
     def get_ImageGeometry(self, resolution=1.0):
         '''returns a default configured ImageGeometry object based on the AcquisitionGeomerty'''
 
-        num_voxel_xy = int(numpy.ceil(self.config.panel.num_pixels[0] * resolution))
+        num_voxel_xy = int(np.ceil(self.config.panel.num_pixels[0] * resolution))
         voxel_size_xy = self.config.panel.pixel_size[0] / (resolution * self.magnification)
 
         if self.dimension == '3D':
-            num_voxel_z = int(numpy.ceil(self.config.panel.num_pixels[1] * resolution))
+            num_voxel_z = int(np.ceil(self.config.panel.num_pixels[1] * resolution))
             voxel_size_z = self.config.panel.pixel_size[1] / (resolution * self.magnification)
         else:
             num_voxel_z = 0
@@ -2579,7 +2580,7 @@ class AcquisitionGeometry(object):
         :param value: accepts numbers to allocate an uniform array, or a string as 'random' or 'random_int' to create a random array or None.
         :type value: number or string, default None allocates empty memory block
         :param dtype: numerical type to allocate
-        :type dtype: numpy type, default numpy.float32
+        :type dtype: np type, default np.float32
         '''
         dtype = kwargs.get('dtype', self.dtype)
 
@@ -2597,19 +2598,19 @@ class AcquisitionGeometry(object):
             if value == AcquisitionGeometry.RANDOM:
                 seed = kwargs.get('seed', None)
                 if seed is not None:
-                    numpy.random.seed(seed)
-                if numpy.iscomplexobj(out.array):
-                    r = numpy.random.random_sample(self.shape) + 1j * numpy.random.random_sample(self.shape)
+                    np.random.seed(seed)
+                if np.iscomplexobj(out.array):
+                    r = np.random.random_sample(self.shape) + 1j * np.random.random_sample(self.shape)
                     out.fill(r)
                 else:
-                    out.fill(numpy.random.random_sample(self.shape))
+                    out.fill(np.random.random_sample(self.shape))
             elif value == AcquisitionGeometry.RANDOM_INT:
                 seed = kwargs.get('seed', None)
                 if seed is not None:
-                    numpy.random.seed(seed)
+                    np.random.seed(seed)
                 max_value = kwargs.get('max_value', 100)
-                r = numpy.random.randint(max_value,size=self.shape, dtype=numpy.int32)
-                out.fill(numpy.asarray(r, dtype=self.dtype))
+                r = np.random.randint(max_value,size=self.shape, dtype=np.int32)
+                out.fill(np.asarray(r, dtype=self.dtype))
             elif value is None:
                 pass
             else:
@@ -2617,10 +2618,40 @@ class AcquisitionGeometry(object):
         
         return out
 
+# NEP 18 
+HANDLED_FUNCTIONS = {}
+def implements(np_function):
+    """Register an __array_function__ implementation for MyArray objects."""
+    def decorator(func):
+        logging.debug("Adding {} to HANDLED_FUNCTIONS".format(np_function.__name__))
+        HANDLED_FUNCTIONS[np_function] = func
+        return func
+    return decorator
+
 class DataContainer(object):
     '''Generic class to hold data
     
-    Data is currently held in a numpy arrays'''
+    Data is currently held in a np arrays'''
+
+    def __array_function__(self, func, types, args, kwargs):
+        logging.debug('{} {}'.format(inspect.currentframe().f_code.co_name, func))
+        if func not in HANDLED_FUNCTIONS:
+            return NotImplemented
+        if not all(issubclass(t, DataContainer) for t in types):
+            return NotImplemented
+        return HANDLED_FUNCTIONS[func](*args, **kwargs)
+    
+    def __array_ufunc__(self, ufunc, method, inputs, *args, **kwargs):
+        logging.debug('{} {}'.format(inspect.currentframe().f_code.co_name, ufunc))
+        if ufunc not in HANDLED_FUNCTIONS:
+            return NotImplemented
+        out = kwargs.pop('out', None)
+    
+        if out is not None:
+            HANDLED_FUNCTIONS[ufunc](inputs, *args, out=out[0], **kwargs)
+            return
+        else:
+            return HANDLED_FUNCTIONS[ufunc](inputs, *args, out=None, **kwargs)
 
     @property
     def geometry(self):
@@ -2685,13 +2716,13 @@ class DataContainer(object):
                   **kwargs):
         '''Holds the data'''
         
-        if type(array) == numpy.ndarray:
+        if type(array) == np.ndarray:
             if deep_copy:
                 self.array = array.copy()
             else:
                 self.array = array    
         else:
-            raise TypeError('Array must be NumpyArray, passed {0}'\
+            raise TypeError('Array must be npArray, passed {0}'\
                             .format(type(array)))
 
         #Don't set for derived classes
@@ -2783,7 +2814,7 @@ class DataContainer(object):
             new_order[i] = self.dimension_labels.index(axis)
             dimension_labels_new[i] = axis
 
-        self.array = numpy.ascontiguousarray(numpy.transpose(self.array, new_order))
+        self.array = np.ascontiguousarray(np.transpose(self.array, new_order))
 
         if self.geometry is None:
             self.dimension_labels = dimension_labels_new
@@ -2791,13 +2822,13 @@ class DataContainer(object):
             self.geometry.set_labels(dimension_labels_new)
     
     def fill(self, array, **dimension):
-        '''fills the internal data array with the DataContainer, numpy array or number provided
+        '''fills the internal data array with the DataContainer, np array or number provided
         
-        :param array: number, numpy array or DataContainer to copy into the DataContainer
-        :type array: DataContainer or subclasses, numpy array or number
+        :param array: number, np array or DataContainer to copy into the DataContainer
+        :type array: DataContainer or subclasses, np array or number
         :param dimension: dictionary, optional
         
-        if the passed numpy array points to the same array that is contained in the DataContainer,
+        if the passed np array points to the same array that is contained in the DataContainer,
         it just returns
 
         In case a DataContainer or subclass is passed, there will be a check of the geometry, 
@@ -2811,12 +2842,12 @@ class DataContainer(object):
         if id(array) == id(self.array):
             return
         if dimension == {}:
-            if isinstance(array, numpy.ndarray):
+            if isinstance(array, np.ndarray):
                 if array.shape != self.shape:
                     raise ValueError('Cannot fill with the provided array.' + \
                                      'Expecting shape {0} got {1}'.format(
                                      self.shape,array.shape))
-                numpy.copyto(self.array, array)
+                np.copyto(self.array, array)
             elif isinstance(array, Number):
                 self.array.fill(array) 
             elif issubclass(array.__class__ , DataContainer):
@@ -2828,13 +2859,13 @@ class DataContainer(object):
                     pass
 
                 if self.array.shape == array.shape:
-                    numpy.copyto(self.array, array.array)
+                    np.copyto(self.array, array.array)
                 else:
                     raise ValueError('Cannot fill with the provided array.' + \
                                      'Expecting shape {0} got {1}'.format(
                                      self.shape,array.shape))
             else:
-                raise TypeError('Can fill only with number, numpy array or DataContainer and subclasses. Got {}'.format(type(array)))
+                raise TypeError('Can fill only with number, np array or DataContainer and subclasses. Got {}'.format(type(array)))
         else:
             
             axis = [':']* self.number_of_dimensions
@@ -2851,14 +2882,14 @@ class DataContainer(object):
                 command += str(el)
                 i+=1
             
-            if isinstance(array, numpy.ndarray):
+            if isinstance(array, np.ndarray):
                 command = command + "] = array[:]" 
             elif issubclass(array.__class__, DataContainer):
                 command = command + "] = array.as_array()[:]" 
             elif isinstance (array, Number):
                 command = command + "] = array"
             else:
-                raise TypeError('Can fill only with number, numpy array or DataContainer and subclasses. Got {}'.format(type(array)))
+                raise TypeError('Can fill only with number, np array or DataContainer and subclasses. Got {}'.format(type(array)))
             exec(command)
             
         
@@ -2904,7 +2935,7 @@ class DataContainer(object):
     
     def __rpow__(self, other):
         if isinstance(other, Number) :
-            fother = numpy.ones(numpy.shape(self.array)) * other
+            fother = np.ones(np.shape(self.array)) * other
             return type(self)(fother ** self.array , 
                            dimension_labels=self.dimension_labels,
                            geometry=self.geometry)
@@ -2989,7 +3020,7 @@ class DataContainer(object):
                 out = pwop(self.as_array() , x2 , *args, **kwargs )
             elif issubclass(x2.__class__ , DataContainer):
                 out = pwop(self.as_array() , x2.as_array() , *args, **kwargs )
-            elif isinstance(x2, numpy.ndarray):
+            elif isinstance(x2, np.ndarray):
                 out = pwop(self.as_array() , x2 , *args, **kwargs )
             else:
                 raise TypeError('Expected x2 type as number or DataContainer, got {}'.format(type(x2)))
@@ -3015,9 +3046,9 @@ class DataContainer(object):
             else:
                 raise ValueError(message(type(self),"Wrong size for data memory: out {} x2 {} expected {}".format( out.shape,x2.shape ,self.shape)))
         elif issubclass(type(out), DataContainer) and \
-             isinstance(x2, (Number, numpy.ndarray)):
+             isinstance(x2, (Number, np.ndarray)):
             if self.check_dimensions(out):
-                if isinstance(x2, numpy.ndarray) and\
+                if isinstance(x2, np.ndarray) and\
                     not (x2.shape == self.shape and x2.dtype == self.dtype):
                     raise ValueError(message(type(self),
                         "Wrong size for data memory: out {} x2 {} expected {}"\
@@ -3027,7 +3058,7 @@ class DataContainer(object):
                 return out
             else:
                 raise ValueError(message(type(self),"Wrong size for data memory: ", out.shape,self.shape))
-        elif issubclass(type(out), numpy.ndarray):
+        elif issubclass(type(out), np.ndarray):
             if self.array.shape == out.shape and self.array.dtype == out.dtype:
                 kwargs['out'] = out
                 pwop(self.as_array(), x2, *args, **kwargs)
@@ -3038,53 +3069,59 @@ class DataContainer(object):
         else:
             raise ValueError (message(type(self),  "incompatible class:" , pwop.__name__, type(out)))
     
+    @implements(np.add)
     def add(self, other, *args, **kwargs):
         if hasattr(other, '__container_priority__') and \
            self.__class__.__container_priority__ < other.__class__.__container_priority__:
             return other.add(self, *args, **kwargs)
-        return self.pixel_wise_binary(numpy.add, other, *args, **kwargs)
+        return self.pixel_wise_binary(np.add, other, *args, **kwargs)
     
+    @implements(np.subtract)
     def subtract(self, other, *args, **kwargs):
         if hasattr(other, '__container_priority__') and \
            self.__class__.__container_priority__ < other.__class__.__container_priority__:
             return other.subtract(self, *args, **kwargs)
-        return self.pixel_wise_binary(numpy.subtract, other, *args, **kwargs)
+        return self.pixel_wise_binary(np.subtract, other, *args, **kwargs)
 
+    @implements(np.multiply)
     def multiply(self, other, *args, **kwargs):
         if hasattr(other, '__container_priority__') and \
            self.__class__.__container_priority__ < other.__class__.__container_priority__:
             return other.multiply(self, *args, **kwargs)
-        return self.pixel_wise_binary(numpy.multiply, other, *args, **kwargs)
+        return self.pixel_wise_binary(np.multiply, other, *args, **kwargs)
     
+    @implements(np.divide)
     def divide(self, other, *args, **kwargs):
         if hasattr(other, '__container_priority__') and \
            self.__class__.__container_priority__ < other.__class__.__container_priority__:
             return other.divide(self, *args, **kwargs)
-        return self.pixel_wise_binary(numpy.divide, other, *args, **kwargs)
+        return self.pixel_wise_binary(np.divide, other, *args, **kwargs)
     
+    @implements(np.power)
     def power(self, other, *args, **kwargs):
-        return self.pixel_wise_binary(numpy.power, other, *args, **kwargs)    
-          
-    def maximum(self, x2, *args, **kwargs):
-        return self.pixel_wise_binary(numpy.maximum, x2, *args, **kwargs)
+        return self.pixel_wise_binary(np.power, other, *args, **kwargs)    
     
+    @implements(np.maximum)
+    def maximum(self, x2, *args, **kwargs):
+        return self.pixel_wise_binary(np.maximum, x2, *args, **kwargs)
+    
+    @implements(np.minimum)
     def minimum(self,x2, out=None, *args, **kwargs):
-        return self.pixel_wise_binary(numpy.minimum, x2=x2, out=out, *args, **kwargs)
-
+        return self.pixel_wise_binary(np.minimum, x2=x2, out=out, *args, **kwargs)
 
     def sapyb(self, a, y, b, out=None, num_threads=NUM_THREADS):
         '''performs a*self + b * y. Can be done in-place
         
         Parameters
         ----------
-        a : multiplier for self, can be a number or a numpy array or a DataContainer
+        a : multiplier for self, can be a number or a np array or a DataContainer
         y : DataContainer 
-        b : multiplier for y, can be a number or a numpy array or a DataContainer
+        b : multiplier for y, can be a number or a np array or a DataContainer
         out : return DataContainer, if None a new DataContainer is returned, default None. 
             out can be self or y.
         num_threads : number of threads to use during the calculation, using the CIL C library
         
-        It will try to use the CIL C library and default to numpy operations, in case the C library does
+        It will try to use the CIL C library and default to np operations, in case the C library does
         not handle the types.
         
         Example:
@@ -3103,7 +3140,7 @@ class DataContainer(object):
             out = self * 0.
             ret_out = True
 
-        if out.dtype in [ numpy.float32, numpy.float64 ]:
+        if out.dtype in [ np.float32, np.float64 ]:
             # handle with C-lib _axpby
             try:
                 self._axpby(a, b, y, out, out.dtype, num_threads)
@@ -3115,8 +3152,7 @@ class DataContainer(object):
             except TypeError as te:
                 warnings.warn("sapyb defaulting to Python due to: {}".format(te))
             finally:
-                pass
-        
+                pass       
 
         # cannot be handled by _axpby
         ax = self * a
@@ -3126,7 +3162,7 @@ class DataContainer(object):
         if ret_out:
             return out
 
-    def _axpby(self, a, b, y, out, dtype=numpy.float32, num_threads=NUM_THREADS):
+    def _axpby(self, a, b, y, out, dtype=np.float32, num_threads=NUM_THREADS):
         '''performs axpby with cilacc C library, can be done in-place.
         
         Does the operation .. math:: a*x+b*y and stores the result in out, where x is self
@@ -3138,7 +3174,7 @@ class DataContainer(object):
         :param y: DataContainer
         :param out: DataContainer instance to store the result
         :param dtype: data type of the DataContainers
-        :type dtype: numpy type, optional, default numpy.float32
+        :type dtype: np type, optional, default np.float32
         :param num_threads: number of threads to run on
         :type num_threads: int, optional, default 1/2 CPU of the system
         '''
@@ -3146,16 +3182,16 @@ class DataContainer(object):
         c_float_p = ctypes.POINTER(ctypes.c_float)
         c_double_p = ctypes.POINTER(ctypes.c_double)
 
-        #convert a and b to numpy arrays and get the reference to the data (length = 1 or ndx.size)
+        #convert a and b to np arrays and get the reference to the data (length = 1 or ndx.size)
         try:
             nda = a.as_array()
         except:
-            nda = numpy.asarray(a)
+            nda = np.asarray(a)
 
         try:
             ndb = b.as_array()
         except:
-            ndb = numpy.asarray(b)
+            ndb = np.asarray(b)
 
         a_vec = 0
         if nda.size > 1:
@@ -3182,7 +3218,7 @@ class DataContainer(object):
         if ndb.dtype != dtype:
             ndb = ndb.astype(dtype, casting='same_kind')
 
-        if dtype == numpy.float32:
+        if dtype == np.float32:
             x_p = ndx.ctypes.data_as(c_float_p)
             y_p = ndy.ctypes.data_as(c_float_p)
             out_p = ndout.ctypes.data_as(c_float_p)
@@ -3190,7 +3226,7 @@ class DataContainer(object):
             b_p = ndb.ctypes.data_as(c_float_p)
             f = cilacc.saxpby
 
-        elif dtype == numpy.float64:
+        elif dtype == np.float64:
             x_p = ndx.ctypes.data_as(c_double_p)
             y_p = ndy.ctypes.data_as(c_double_p)
             out_p = ndout.ctypes.data_as(c_double_p)
@@ -3199,11 +3235,8 @@ class DataContainer(object):
             f = cilacc.daxpby
 
         else:
-            raise TypeError('Unsupported type {}. Expecting numpy.float32 or numpy.float64'.format(dtype))
+            raise TypeError('Unsupported type {}. Expecting np.float32 or np.float64'.format(dtype))
 
-        #out = numpy.empty_like(a)
-
-        
         # int psaxpby(float * x, float * y, float * out, float a, float b, long size)
         cilacc.saxpby.argtypes = [ctypes.POINTER(ctypes.c_float),  # pointer to the first array 
                                   ctypes.POINTER(ctypes.c_float),  # pointer to the second array 
@@ -3227,7 +3260,6 @@ class DataContainer(object):
         if f(x_p, y_p, out_p, a_p, a_vec, b_p, b_vec, ndx.size, num_threads) != 0:
             raise RuntimeError('axpby execution failed')
         
-
     ## unary operations
     def pixel_wise_unary(self, pwop, *args,  **kwargs):
         out = kwargs.get('out', None)
@@ -3244,47 +3276,53 @@ class DataContainer(object):
                 pwop(self.as_array(), *args, **kwargs )
             else:
                 raise ValueError(message(type(self),"Wrong size for data memory: ", out.shape,self.shape))
-        elif issubclass(type(out), numpy.ndarray):
+        elif issubclass(type(out), np.ndarray):
             if self.array.shape == out.shape and self.array.dtype == out.dtype:
                 kwargs['out'] = out
                 pwop(self.as_array(), *args, **kwargs)
         else:
             raise ValueError (message(type(self),  "incompatible class:" , pwop.__name__, type(out)))
     
+    @implements(np.abs)
     def abs(self, *args,  **kwargs):
-        return self.pixel_wise_unary(numpy.abs, *args,  **kwargs)
-
-    def sign(self, *args,  **kwargs):
-        return self.pixel_wise_unary(numpy.sign, *args,  **kwargs)
+        return self.pixel_wise_unary(np.abs, *args,  **kwargs)
     
+    @implements(np.sign)
+    def sign(self, *args,  **kwargs):
+        return self.pixel_wise_unary(np.sign, *args,  **kwargs)
+    
+    @implements(np.sqrt)
     def sqrt(self, *args,  **kwargs):
-        return self.pixel_wise_unary(numpy.sqrt, *args,  **kwargs)
+        return self.pixel_wise_unary(np.sqrt, *args,  **kwargs)
 
+    @implements(np.conjugate)
     def conjugate(self, *args,  **kwargs):
-        return self.pixel_wise_unary(numpy.conjugate, *args,  **kwargs)
+        return self.pixel_wise_unary(np.conjugate, *args,  **kwargs)
 
+    @implements(np.exp)
     def exp(self, *args, **kwargs):
         '''Applies exp pixel-wise to the DataContainer'''
-        return self.pixel_wise_unary(numpy.exp, *args, **kwargs)
+        return self.pixel_wise_unary(np.exp, *args, **kwargs)
     
+    @implements(np.log)
     def log(self, *args, **kwargs):
         '''Applies log pixel-wise to the DataContainer'''
-        return self.pixel_wise_unary(numpy.log, *args, **kwargs)
+        return self.pixel_wise_unary(np.log, *args, **kwargs)
     
     ## reductions
+    @implements(np.sum)
     def sum(self, *args, **kwargs):
         return self.as_array().sum(*args, **kwargs)
+    
     def squared_norm(self, **kwargs):
         '''return the squared euclidean norm of the DataContainer viewed as a vector'''
-        #shape = self.shape
-        #size = reduce(lambda x,y:x*y, shape, 1)
-        #y = numpy.reshape(self.as_array(), (size, ))
         return self.dot(self)
-        #return self.dot(self)
+        
     def norm(self, **kwargs):
         '''return the euclidean norm of the DataContainer viewed as a vector'''
-        return numpy.sqrt(self.squared_norm(**kwargs))
+        return np.sqrt(self.squared_norm(**kwargs))
     
+    @implements(np.dot)
     def dot(self, other, *args, **kwargs):
         '''return the inner product of 2 DataContainers viewed as vectors
         
@@ -3292,14 +3330,14 @@ class DataContainer(object):
 
         a.dot(b.conjugate())
         '''
-        method = kwargs.get('method', 'numpy')
-        if method not in ['numpy','reduce']:
-            raise ValueError('dot: specified method not valid. Expecting numpy or reduce got {} '.format(
+        method = kwargs.get('method', 'np')
+        if method not in ['np','reduce']:
+            raise ValueError('dot: specified method not valid. Expecting np or reduce got {} '.format(
                     method))
 
         if self.shape == other.shape:
-            if method == 'numpy':
-                return numpy.dot(self.as_array().ravel(), other.as_array().ravel().conjugate())
+            if method == 'np':
+                return np.dot(self.as_array().ravel(), other.as_array().ravel().conjugate())
             elif method == 'reduce':
                 # see https://github.com/vais-ral/CCPi-Framework/pull/273
                 # notice that Python seems to be smart enough to use
@@ -3312,20 +3350,22 @@ class DataContainer(object):
         else:
             raise ValueError('Shapes are not aligned: {} != {}'.format(self.shape, other.shape))
     
+    @implements(np.min)
     def min(self, *args, **kwargs):
         '''Returns the min pixel value in the DataContainer'''
-        return numpy.min(self.as_array(), *args, **kwargs)
+        return np.min(self.as_array(), *args, **kwargs)
     
+    @implements(np.max)
     def max(self, *args, **kwargs):
         '''Returns the max pixel value in the DataContainer'''
-        return numpy.max(self.as_array(), *args, **kwargs)
+        return np.max(self.as_array(), *args, **kwargs)
     
+    @implements(np.mean)
     def mean(self, *args, **kwargs):
         '''Returns the mean pixel value of the DataContainer'''
         if kwargs.get('dtype', None) is None:
-            kwargs['dtype'] = numpy.float64
-        return numpy.mean(self.as_array(), *args, **kwargs)
-
+            kwargs['dtype'] = np.float64
+        return np.mean(self.as_array(), *args, **kwargs)
 
     # Logic operators between DataContainers and floats    
     def __le__(self, other):
@@ -3391,7 +3431,7 @@ class ImageData(DataContainer):
                  geometry=None, 
                  **kwargs):
 
-        dtype = kwargs.get('dtype', numpy.float32)
+        dtype = kwargs.get('dtype', np.float32)
     
 
         if geometry is None:
@@ -3403,13 +3443,13 @@ class ImageData(DataContainer):
                 raise ValueError("Deprecated: 'dimension_labels' cannot be set with 'allocate()'. Use 'geometry.set_labels()' to modify the geometry before using allocate.")
 
         if array is None:                                   
-            array = numpy.empty(geometry.shape, dtype=dtype)
+            array = np.empty(geometry.shape, dtype=dtype)
         elif issubclass(type(array) , DataContainer):
             array = array.as_array()
-        elif issubclass(type(array) , numpy.ndarray):
+        elif issubclass(type(array) , np.ndarray):
             pass
         else:
-            raise TypeError('array must be a CIL type DataContainer or numpy.ndarray got {}'.format(type(array)))
+            raise TypeError('array must be a CIL type DataContainer or np.ndarray got {}'.format(type(array)))
             
         if array.shape != geometry.shape:
             raise ValueError('Shape mismatch {} {}'.format(array.shape, geometry.shape))
@@ -3436,7 +3476,7 @@ class ImageData(DataContainer):
         if vertical == 'centre':
             dim = self.geometry.dimension_labels.index('vertical')  
             centre_slice_pos = (self.geometry.shape[dim]-1) / 2.
-            ind0 = int(numpy.floor(centre_slice_pos))
+            ind0 = int(np.floor(centre_slice_pos))
             
             w2 = centre_slice_pos - ind0
             out = DataContainer.get_slice(self, channel=channel, vertical=ind0, horizontal_x=horizontal_x, horizontal_y=horizontal_y)
@@ -3481,10 +3521,10 @@ class ImageData(DataContainer):
         y_range = (ig.voxel_num_y-1)/2
         x_range = (ig.voxel_num_x-1)/2
 
-        Y, X = numpy.ogrid[-y_range:y_range+1,-x_range:x_range+1]
+        Y, X = np.ogrid[-y_range:y_range+1,-x_range:x_range+1]
         
         # use centre from geometry in units distance to account for aspect ratio of pixels
-        dist_from_center = numpy.sqrt((X*ig.voxel_size_x+ ig.center_x)**2 + (Y*ig.voxel_size_y+ig.center_y)**2)
+        dist_from_center = np.sqrt((X*ig.voxel_size_x+ ig.center_x)**2 + (Y*ig.voxel_size_y+ig.center_y)**2)
 
         size_x = ig.voxel_num_x * ig.voxel_size_x
         size_y = ig.voxel_num_y * ig.voxel_size_y
@@ -3496,17 +3536,17 @@ class ImageData(DataContainer):
 
         # approximate the voxel as a circle and get the radius
         # ie voxel area = 1, circle of area=1 has r = 0.56
-        r=((ig.voxel_size_x * ig.voxel_size_y )/numpy.pi)**(1/2)
+        r=((ig.voxel_size_x * ig.voxel_size_y )/np.pi)**(1/2)
 
         # we have the voxel centre distance to mask. voxels with distance greater than |r| are fully inside or outside.
         # values on the border region between -r and r are preserved
         mask =(radius_applied-dist_from_center).clip(-r,r)
 
         #  rescale to -pi/2->+pi/2
-        mask *= (0.5*numpy.pi)/r
+        mask *= (0.5*np.pi)/r
 
         # the sin of the linear distance gives us an approximation of area of the circle to include in the mask
-        numpy.sin(mask, out = mask)
+        np.sin(mask, out = mask)
 
         # rescale the data 0 - 1
         mask = 0.5 + mask * 0.5
@@ -3523,13 +3563,13 @@ class ImageData(DataContainer):
 
         if in_place == True:
             self.reorder(labels)
-            numpy.multiply(self.array, mask, out=self.array)
+            np.multiply(self.array, mask, out=self.array)
             self.reorder(labels_orig)
 
         else:
             image_data_out = self.copy()
             image_data_out.reorder(labels)
-            numpy.multiply(image_data_out.array, mask, out=image_data_out.array)
+            np.multiply(image_data_out.array, mask, out=image_data_out.array)
             image_data_out.reorder(labels_orig)
 
             return image_data_out
@@ -3562,7 +3602,7 @@ class AcquisitionData(DataContainer, Partitioner):
                  geometry = None,
                  **kwargs):
 
-        dtype = kwargs.get('dtype', numpy.float32)
+        dtype = kwargs.get('dtype', np.float32)
 
         if geometry is None:
             raise AttributeError("AcquisitionData requires a geometry")
@@ -3572,13 +3612,13 @@ class AcquisitionData(DataContainer, Partitioner):
                 raise ValueError("Deprecated: 'dimension_labels' cannot be set with 'allocate()'. Use 'geometry.set_labels()' to modify the geometry before using allocate.")
 
         if array is None:                                   
-            array = numpy.empty(geometry.shape, dtype=dtype)
+            array = np.empty(geometry.shape, dtype=dtype)
         elif issubclass(type(array) , DataContainer):
             array = array.as_array()
-        elif issubclass(type(array) , numpy.ndarray):
+        elif issubclass(type(array) , np.ndarray):
             pass
         else:
-            raise TypeError('array must be a CIL type DataContainer or numpy.ndarray got {}'.format(type(array)))
+            raise TypeError('array must be a CIL type DataContainer or np.ndarray got {}'.format(type(array)))
             
         if array.shape != geometry.shape:
             raise ValueError('Shape mismatch got {} expected {}'.format(array.shape, geometry.shape))
@@ -3604,7 +3644,7 @@ class AcquisitionData(DataContainer, Partitioner):
             dim = self.geometry.dimension_labels.index('vertical')
             
             centre_slice_pos = (self.geometry.shape[dim]-1) / 2.
-            ind0 = int(numpy.floor(centre_slice_pos))
+            ind0 = int(np.floor(centre_slice_pos))
             w2 = centre_slice_pos - ind0
             out = DataContainer.get_slice(self, channel=channel, angle=angle, vertical=ind0, horizontal=horizontal)
             
@@ -3840,12 +3880,12 @@ class CastDataContainer(DataProcessor):
         dsi = self.get_input()
         dtype = self.dtype
         if out is None:
-            y = numpy.asarray(dsi.as_array(), dtype=dtype)
+            y = np.asarray(dsi.as_array(), dtype=dtype)
             
-            return type(dsi)(numpy.asarray(dsi.as_array(), dtype=dtype),
+            return type(dsi)(np.asarray(dsi.as_array(), dtype=dtype),
                                 dimension_labels=dsi.dimension_labels )
         else:
-            out.fill(numpy.asarray(dsi.as_array(), dtype=dtype))
+            out.fill(np.asarray(dsi.as_array(), dtype=dtype))
     
 class PixelByPixelDataProcessor(DataProcessor):
     '''Example DataProcessor
@@ -3872,7 +3912,7 @@ class PixelByPixelDataProcessor(DataProcessor):
         pyfunc = self.pyfunc
         dsi = self.get_input()
         
-        eval_func = numpy.frompyfunc(pyfunc,1,1)
+        eval_func = np.frompyfunc(pyfunc,1,1)
 
         
         y = DataContainer( eval_func( dsi.as_array() ) , True, 
@@ -3908,7 +3948,7 @@ class VectorData(DataContainer):
     def __init__(self, array=None, **kwargs):
         self.geometry = kwargs.get('geometry', None)
 
-        dtype = kwargs.get('dtype', numpy.float32)
+        dtype = kwargs.get('dtype', np.float32)
         
         if self.geometry is None:
             if array is None:
@@ -3923,7 +3963,7 @@ class VectorData(DataContainer):
             self.length = self.geometry.length
                 
             if array is None:
-                out = numpy.zeros((self.length,), dtype=dtype)
+                out = np.zeros((self.length,), dtype=dtype)
             else:
                 if self.length == array.shape[0]:
                     out = array
@@ -3952,7 +3992,7 @@ class VectorGeometry(object):
         
         self.length = int(length)
         self.shape = (length, )
-        self.dtype = kwargs.get('dtype', numpy.float32)
+        self.dtype = kwargs.get('dtype', np.float32)
         self.dimension_labels = kwargs.get('dimension_labels', None)
         
     def clone(self):
@@ -3988,14 +4028,14 @@ class VectorGeometry(object):
         :param value: accepts numbers to allocate an uniform array, or a string as 'random' or 'random_int' to create a random array or None.
         :type value: number or string, default None allocates empty memory block
         :param dtype: numerical type to allocate
-        :type dtype: numpy type, default numpy.float32
+        :type dtype: np type, default np.float32
         :param seed: seed for the random number generator
         :type seed: int, default None
         :param max_value: max value of the random int array
         :type max_value: int, default 100'''
 
         dtype = kwargs.get('dtype', self.dtype)
-        # self.dtype = kwargs.get('dtype', numpy.float32)
+        # self.dtype = kwargs.get('dtype', np.float32)
         out = VectorData(geometry=self.copy(), dtype=dtype)
         if isinstance(value, Number):
             if value != 0:
@@ -4004,15 +4044,15 @@ class VectorGeometry(object):
             if value == VectorGeometry.RANDOM:
                 seed = kwargs.get('seed', None)
                 if seed is not None:
-                    numpy.random.seed(seed) 
-                out.fill(numpy.random.random_sample(self.shape))
+                    np.random.seed(seed) 
+                out.fill(np.random.random_sample(self.shape))
             elif value == VectorGeometry.RANDOM_INT:
                 seed = kwargs.get('seed', None)
                 if seed is not None:
-                    numpy.random.seed(seed)
+                    np.random.seed(seed)
                 max_value = kwargs.get('max_value', 100)
-                r = numpy.random.randint(max_value,size=self.shape, dtype=numpy.int32)
-                out.fill(numpy.asarray(r, dtype=self.dtype))             
+                r = np.random.randint(max_value,size=self.shape, dtype=np.int32)
+                out.fill(np.asarray(r, dtype=self.dtype))             
             elif value is None:
                 pass
             else:
