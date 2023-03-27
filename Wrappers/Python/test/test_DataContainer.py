@@ -1134,3 +1134,21 @@ class TestDataContainer(CCPiTestClass):
         u.fill(b, channel=1, vertical=1)
         np.testing.assert_array_equal(u.get_slice(channel=1, vertical=1).as_array(), 3 * a)
 
+
+class TestNEP18(unittest.TestCase):
+    def setUp(self) -> None:
+        N = 10
+        M = 10
+        self.dc = DataContainer( np.reshape( np.arange(N*M), (N, M) ) ) 
+        self.dc2 = DataContainer(np.ones((N, M)))
+        self.out = DataContainer(np.zeros((N, M)))
+
+    def pixel_wise_binary(self, ufunc):
+        out = ufunc(self.dc, self.dc2)
+        ufunc(self.dc, self.dc2, out=self.out)
+        np.testing.assert_array_equal(out.as_array(), self.out.as_array())
+
+    def test_pixelwise_binary(self):
+        for ufunc in [np.add, np.subtract, np.multiply, np.divide]:
+            self.pixel_wise_binary(ufunc)
+
