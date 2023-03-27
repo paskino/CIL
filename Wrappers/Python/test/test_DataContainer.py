@@ -20,7 +20,7 @@
 import unittest
 from utils import initialise_tests
 import sys
-import numpy
+import numpy as np
 from cil.framework import DataContainer
 from cil.framework import ImageData
 from cil.framework import AcquisitionData
@@ -59,7 +59,7 @@ class TestDataContainer(CCPiTestClass):
 
     def create_DataContainer(self, X,Y,Z, value=1):
         steps = [timer()]
-        a = value * numpy.ones((X, Y, Z), dtype='float32')
+        a = value * np.ones((X, Y, Z), dtype='float32')
         steps.append(timer())
         t0 = dt(steps)
         #print("a refcount " , sys.getrefcount(a))
@@ -72,9 +72,9 @@ class TestDataContainer(CCPiTestClass):
         for i in range(1, len(shape)):
             size = size * shape[i]
         #print("a refcount " , sys.getrefcount(a))
-        a = numpy.asarray([i for i in range(size)])
+        a = np.asarray([i for i in range(size)])
         #print("a refcount " , sys.getrefcount(a))
-        a = numpy.reshape(a, shape)
+        a = np.reshape(a, shape)
         #print("a refcount " , sys.getrefcount(a))
         ds = DataContainer(a, False, ['X', 'Y', 'Z', 'W'])
         #print("a refcount " , sys.getrefcount(a))
@@ -85,7 +85,7 @@ class TestDataContainer(CCPiTestClass):
         X, Y, Z = 512, 512, 512
         X, Y, Z = 256, 512, 512
         steps = [timer()]
-        a = numpy.ones((X, Y, Z), dtype='float32')
+        a = np.ones((X, Y, Z), dtype='float32')
         steps.append(timer())
         t0 = dt(steps)
         #print("a refcount " , sys.getrefcount(a))
@@ -99,7 +99,7 @@ class TestDataContainer(CCPiTestClass):
 
     def test_ndim(self):
 
-        x_np = numpy.arange(0, 60).reshape(3,4,5)
+        x_np = np.arange(0, 60).reshape(3,4,5)
         x_cil = DataContainer(x_np)
         self.assertEqual(x_np.ndim, x_cil.ndim)
         self.assertEqual(3, x_cil.ndim)
@@ -108,7 +108,7 @@ class TestDataContainer(CCPiTestClass):
         X, Y, Z = 1024, 512, 512
         X, Y, Z = 256, 512, 512
         steps = [timer()]
-        a = numpy.ones((X, Y, Z), dtype='float32')
+        a = np.ones((X, Y, Z), dtype='float32')
         steps.append(timer())
         t0 = dt(steps)
         #print("a refcount " , sys.getrefcount(a))
@@ -155,7 +155,7 @@ class TestDataContainer(CCPiTestClass):
         X, Y, Z = 1024, 512, 512
         X, Y, Z = 256, 512, 512
         steps = [timer()]
-        a = -numpy.ones((X, Y, Z), dtype='float32')
+        a = -np.ones((X, Y, Z), dtype='float32')
         steps.append(timer())
         t0 = dt(steps)
         #print("a refcount " , sys.getrefcount(a))
@@ -173,7 +173,7 @@ class TestDataContainer(CCPiTestClass):
         ds.sqrt(out=ds)
         steps.append(timer())
         self.assertEqual(ds.as_array()[0][0][0],
-                         numpy.sqrt(2., dtype='float32'))
+                         np.sqrt(2., dtype='float32'))
 
     def test_binary_operations(self):
         self.binary_add()
@@ -185,7 +185,7 @@ class TestDataContainer(CCPiTestClass):
         X, Y, Z = 512, 512, 512
         #X, Y, Z = 1024, 512, 512
         steps = [timer()]
-        a = numpy.ones((X, Y, Z), dtype='float32')
+        a = np.ones((X, Y, Z), dtype='float32')
         steps.append(timer())
         t0 = dt(steps)
 
@@ -205,7 +205,7 @@ class TestDataContainer(CCPiTestClass):
         
         #self.assertLess(t1, t2)
         self.assertEqual(out.as_array()[0][0][0], 2.)
-        self.assertNumpyArrayEqual(out.as_array(), ds2.as_array())
+        self.assertnpArrayEqual(out.as_array(), ds2.as_array())
         
         ds0 = ds
         dt1 = 0
@@ -222,14 +222,14 @@ class TestDataContainer(CCPiTestClass):
             steps.append(timer())
             dt2 += dt(steps)/10
         
-        self.assertNumpyArrayEqual(out.as_array(), ds3.as_array())
+        self.assertnpArrayEqual(out.as_array(), ds3.as_array())
         #self.assertLess(dt1, dt2)
         
 
     def binary_subtract(self):
         X, Y, Z = 512, 512, 512
         steps = [timer()]
-        a = numpy.ones((X, Y, Z), dtype='float32')
+        a = np.ones((X, Y, Z), dtype='float32')
         steps.append(timer())
         t0 = dt(steps)
 
@@ -275,7 +275,7 @@ class TestDataContainer(CCPiTestClass):
         X, Y, Z = 1024, 512, 512
         X, Y, Z = 256, 512, 512
         steps = [timer()]
-        a = numpy.ones((X, Y, Z), dtype='float32')
+        a = np.ones((X, Y, Z), dtype='float32')
         steps.append(timer())
         t0 = dt(steps)
 
@@ -315,7 +315,7 @@ class TestDataContainer(CCPiTestClass):
         X, Y, Z = 1024, 512, 512
         X, Y, Z = 256, 512, 512
         steps = [timer()]
-        a = numpy.ones((X, Y, Z), dtype='float32')
+        a = np.ones((X, Y, Z), dtype='float32')
         steps.append(timer())
         t0 = dt(steps)
 
@@ -357,28 +357,28 @@ class TestDataContainer(CCPiTestClass):
         number = 3/2
         
         X, Y, Z = 32, 64, 128
-        a = numpy.ones((X, Y, Z), dtype='float32')
+        a = np.ones((X, Y, Z), dtype='float32')
         ds = DataContainer(a * 3, False, ['X', 'Y', 'Z'])
 
         # rdiv
         b = number / ds
-        numpy.testing.assert_array_almost_equal(a * 0.5, b.as_array())
+        np.testing.assert_array_almost_equal(a * 0.5, b.as_array())
         # radd
         number = 1
         b = number + ds
-        numpy.testing.assert_array_almost_equal(a * 4, b.as_array())
+        np.testing.assert_array_almost_equal(a * 4, b.as_array())
         # rsub
         number = 3
         b = number - ds
-        numpy.testing.assert_array_almost_equal(numpy.zeros_like(a), b.as_array())
+        np.testing.assert_array_almost_equal(np.zeros_like(a), b.as_array())
         # rmul
         number = 1/3
         b = number * ds
-        numpy.testing.assert_array_almost_equal(a, b.as_array())
+        np.testing.assert_array_almost_equal(a, b.as_array())
         # rpow
         number = 2
         b = number ** ds
-        numpy.testing.assert_array_almost_equal(a * 8, b.as_array())
+        np.testing.assert_array_almost_equal(a * 8, b.as_array())
 
 
     def test_creation_copy(self):
@@ -387,9 +387,9 @@ class TestDataContainer(CCPiTestClass):
         for i in range(1, len(shape)):
             size = size * shape[i]
         #print("a refcount " , sys.getrefcount(a))
-        a = numpy.asarray([i for i in range(size)])
+        a = np.asarray([i for i in range(size)])
         #print("a refcount " , sys.getrefcount(a))
-        a = numpy.reshape(a, shape)
+        a = np.reshape(a, shape)
         #print("a refcount " , sys.getrefcount(a))
         ds = DataContainer(a, True, ['X', 'Y', 'Z', 'W'])
         #print("a refcount " , sys.getrefcount(a))
@@ -397,16 +397,16 @@ class TestDataContainer(CCPiTestClass):
 
 
     def test_dot(self):
-        a0 = numpy.asarray([i for i in range(2*3*4)])
-        a1 = numpy.asarray([2*i for i in range(2*3*4)])
+        a0 = np.asarray([i for i in range(2*3*4)])
+        a1 = np.asarray([2*i for i in range(2*3*4)])
                        
-        ds0 = DataContainer(numpy.reshape(a0,(2,3,4)))
-        ds1 = DataContainer(numpy.reshape(a1,(2,3,4)))
+        ds0 = DataContainer(np.reshape(a0,(2,3,4)))
+        ds1 = DataContainer(np.reshape(a1,(2,3,4)))
         
-        numpy.testing.assert_equal(ds0.dot(ds1), a0.dot(a1))
+        np.testing.assert_equal(ds0.dot(ds1), a0.dot(a1))
         
-        a2 = numpy.asarray([2*i for i in range(2*3*5)])
-        ds2 = DataContainer(numpy.reshape(a2,(2,3,5)))
+        a2 = np.asarray([2*i for i in range(2*3*5)])
+        ds2 = DataContainer(np.reshape(a2,(2,3,5)))
         
         # it should fail if the shape is wrong
         try:
@@ -421,14 +421,14 @@ class TestDataContainer(CCPiTestClass):
 
 
     def test_exp_log(self):
-        a0 = numpy.asarray([1. for i in range(2*3*4)])
+        a0 = np.asarray([1. for i in range(2*3*4)])
                 
-        ds0 = DataContainer(numpy.reshape(a0,(2,3,4)), suppress_warning=True)
-        # ds1 = DataContainer(numpy.reshape(a1,(2,3,4)), suppress_warning=True)
+        ds0 = DataContainer(np.reshape(a0,(2,3,4)), suppress_warning=True)
+        # ds1 = DataContainer(np.reshape(a1,(2,3,4)), suppress_warning=True)
         b = ds0.exp().log()
-        numpy.testing.assert_allclose(ds0.as_array(), b.as_array())
+        np.testing.assert_allclose(ds0.as_array(), b.as_array())
         
-        self.assertEqual(ds0.exp().as_array()[0][0][0], numpy.exp(1))
+        self.assertEqual(ds0.exp().as_array()[0][0][0], np.exp(1))
         self.assertEqual(ds0.log().as_array()[0][0][0], 0.)
         
         
@@ -440,21 +440,21 @@ class TestDataContainer(CCPiTestClass):
         self.assertEqual(vol.shape, (2, 3, 4))
 
         vol1 = vol + 1
-        self.assertNumpyArrayEqual(vol1.as_array(), numpy.ones(vol.shape))
+        self.assertnpArrayEqual(vol1.as_array(), np.ones(vol.shape))
 
         vol1 = vol - 1
-        self.assertNumpyArrayEqual(vol1.as_array(), -numpy.ones(vol.shape))
+        self.assertnpArrayEqual(vol1.as_array(), -np.ones(vol.shape))
 
         vol1 = 2 * (vol + 1)
-        self.assertNumpyArrayEqual(vol1.as_array(), 2 * numpy.ones(vol.shape))
+        self.assertnpArrayEqual(vol1.as_array(), 2 * np.ones(vol.shape))
 
         vol1 = (vol + 1) / 2
-        self.assertNumpyArrayEqual(vol1.as_array(), numpy.ones(vol.shape) / 2)
+        self.assertnpArrayEqual(vol1.as_array(), np.ones(vol.shape) / 2)
 
         vol1 = vol + 1
         self.assertEqual(vol1.sum(), 2*3*4)
         vol1 = (vol + 2) ** 2
-        self.assertNumpyArrayEqual(vol1.as_array(), numpy.ones(vol.shape) * 4)
+        self.assertnpArrayEqual(vol1.as_array(), np.ones(vol.shape) * 4)
 
         self.assertEqual(vol.number_of_dimensions, 3)
         
@@ -462,8 +462,8 @@ class TestDataContainer(CCPiTestClass):
                      dimension_labels=[ImageGeometry.HORIZONTAL_X, ImageGeometry.HORIZONTAL_Y,
                  ImageGeometry.VERTICAL])
         data = ig2.allocate()
-        self.assertNumpyArrayEqual(numpy.asarray(data.shape), numpy.asarray(ig2.shape))
-        self.assertNumpyArrayEqual(numpy.asarray(data.shape), data.as_array().shape)
+        self.assertnpArrayEqual(np.asarray(data.shape), np.asarray(ig2.shape))
+        self.assertnpArrayEqual(np.asarray(data.shape), data.as_array().shape)
 
 
     def test_ImageData_apply_circular_mask(self):
@@ -474,43 +474,43 @@ class TestDataContainer(CCPiTestClass):
         data_masked1.apply_circular_mask(0.8)
 
         self.assertEqual(data_orig.geometry, data_masked1.geometry)
-        self.assertEqual(numpy.count_nonzero(data_masked1.array), 14)
+        self.assertEqual(np.count_nonzero(data_masked1.array), 14)
 
         data_masked1 = data_orig.copy()
         data_masked1.apply_circular_mask(0.5)
 
         self.assertEqual(data_orig.geometry, data_masked1.geometry)
-        self.assertEqual(numpy.count_nonzero(data_masked1.array), 8)
+        self.assertEqual(np.count_nonzero(data_masked1.array), 8)
 
         data2 = data_orig.copy()
         data_masked2 = data2.apply_circular_mask(0.5, False)
 
-        numpy.testing.assert_allclose(data_orig.array, data2.array)
-        self.assertEqual(numpy.count_nonzero(data_masked2.array), 8)
+        np.testing.assert_allclose(data_orig.array, data2.array)
+        self.assertEqual(np.count_nonzero(data_masked2.array), 8)
 
 
 
 
 
     def test_AcquisitionData(self):
-        sgeometry = AcquisitionGeometry.create_Parallel3D().set_angles(numpy.linspace(0, 180, num=10)).set_panel((5,3)).set_channels(2)
+        sgeometry = AcquisitionGeometry.create_Parallel3D().set_angles(np.linspace(0, 180, num=10)).set_panel((5,3)).set_channels(2)
 
         #sino = AcquisitionData(geometry=sgeometry)
         sino = sgeometry.allocate()
         self.assertEqual(sino.shape, (2, 10, 3, 5))
            
-        ag = AcquisitionGeometry.create_Parallel3D().set_angles(numpy.linspace(0, 180, num=10)).set_panel((2,3)).set_channels(4)                       
+        ag = AcquisitionGeometry.create_Parallel3D().set_angles(np.linspace(0, 180, num=10)).set_panel((2,3)).set_channels(4)                       
         data = ag.allocate()
-        self.assertNumpyArrayEqual(numpy.asarray(data.shape), numpy.asarray(ag.shape))
-        self.assertNumpyArrayEqual(numpy.asarray(data.shape), data.as_array().shape)
+        self.assertnpArrayEqual(np.asarray(data.shape), np.asarray(ag.shape))
+        self.assertnpArrayEqual(np.asarray(data.shape), data.as_array().shape)
         
-        ag2 = AcquisitionGeometry.create_Parallel3D().set_angles(numpy.linspace(0, 180, num=10)).set_panel((2,3)).set_channels(4)\
+        ag2 = AcquisitionGeometry.create_Parallel3D().set_angles(np.linspace(0, 180, num=10)).set_panel((2,3)).set_channels(4)\
                                  .set_labels([AcquisitionGeometry.VERTICAL ,
                          AcquisitionGeometry.ANGLE, AcquisitionGeometry.HORIZONTAL, AcquisitionGeometry.CHANNEL])
         
         data = ag2.allocate()
-        self.assertNumpyArrayEqual(numpy.asarray(data.shape), numpy.asarray(ag2.shape))
-        self.assertNumpyArrayEqual(numpy.asarray(data.shape), data.as_array().shape)
+        self.assertnpArrayEqual(np.asarray(data.shape), np.asarray(ag2.shape))
+        self.assertnpArrayEqual(np.asarray(data.shape), data.as_array().shape)
 
 
     def test_ImageGeometry_allocate(self):
@@ -532,7 +532,7 @@ class TestDataContainer(CCPiTestClass):
         
         ig = ImageGeometry(2,3,2)
         try:
-            z = ImageData(numpy.random.randint(10, size=(2,3)), geometry=ig)
+            z = ImageData(np.random.randint(10, size=(2,3)), geometry=ig)
             self.assertTrue(False)
         except ValueError as ve:
             logging.info(str (ve))
@@ -540,7 +540,7 @@ class TestDataContainer(CCPiTestClass):
 
         #vgeometry.allocate('')
     def test_AcquisitionGeometry_allocate(self):
-        ageometry = AcquisitionGeometry.create_Parallel3D().set_angles(numpy.linspace(0, 180, num=10)).set_panel((5,3)).set_channels(2)
+        ageometry = AcquisitionGeometry.create_Parallel3D().set_angles(np.linspace(0, 180, num=10)).set_panel((5,3)).set_channels(2)
         sino = ageometry.allocate(0)
         shape = sino.shape
         self.assertAlmostEqual(0.,sino.as_array()[0][0][0][0])
@@ -566,7 +566,7 @@ class TestDataContainer(CCPiTestClass):
         self.assertEqual(order[2], sino.dimension_labels[2])
                 
         try:
-            z = AcquisitionData(numpy.random.randint(10, size=(2,3)), geometry=ageometry)
+            z = AcquisitionData(np.random.randint(10, size=(2,3)), geometry=ageometry)
             self.assertTrue(False)
         except ValueError as ve:
             logging.info(str(ve))
@@ -575,24 +575,24 @@ class TestDataContainer(CCPiTestClass):
 
     def test_BlockGeometry_allocate_dtype(self):
         ig1 = ImageGeometry(3,3)
-        ig2 = ImageGeometry(3,3, dtype=numpy.int16)
+        ig2 = ImageGeometry(3,3, dtype=np.int16)
         bg = BlockGeometry(ig1,ig2)
 
         # print("The default dtype of the BlockImageGeometry is {}".format(bg.dtype))   
-        self.assertEqual(bg.dtype, (numpy.float32, numpy.int16))
+        self.assertEqual(bg.dtype, (np.float32, np.int16))
 
 
     def dtype_allocate_test(self, geometry):
         classname = geometry.__class__.__name__
         # print("The default dtype of the {} is {}".format(classname , geometry.dtype))
-        self.assertEqual(geometry.dtype, numpy.float32)
+        self.assertEqual(geometry.dtype, np.float32)
 
         #print("Change it to complex")
-        geometry.dtype = numpy.complex64
-        self.assertEqual(geometry.dtype, numpy.complex64)
+        geometry.dtype = np.complex64
+        self.assertEqual(geometry.dtype, np.complex64)
 
-        geometry.dtype = numpy.complex128
-        self.assertEqual(geometry.dtype, numpy.complex128)
+        geometry.dtype = np.complex128
+        self.assertEqual(geometry.dtype, np.complex128)
 
         geometry.dtype = complex
         self.assertEqual(geometry.dtype, complex)
@@ -605,13 +605,13 @@ class TestDataContainer(CCPiTestClass):
         #print(data.geometry.dtype)
         self.assertEqual(data.geometry.dtype, geometry.dtype) 
 
-        #print("Allocate data with different dtype, e.g: numpy.int64 from the same {}".format(classname ))
-        data = geometry.allocate(dtype=numpy.int64)
-        self.assertEqual(data.dtype, numpy.int64) 
+        #print("Allocate data with different dtype, e.g: np.int64 from the same {}".format(classname ))
+        data = geometry.allocate(dtype=np.int64)
+        self.assertEqual(data.dtype, np.int64) 
         #print("Data dtype is now {}".format(data.dtype))
         #print("Data geometry dtype is now {}".format(data.geometry.dtype))
-        self.assertEqual(data.geometry.dtype, numpy.int64)
-        self.assertEqual(data.dtype, numpy.int64)
+        self.assertEqual(data.geometry.dtype, np.int64)
+        self.assertEqual(data.dtype, np.int64)
 
         #print("The dtype of the {} remain unchanged ig.dtype =  {}".format(classname, geometry.dtype))
         self.assertEqual(geometry.dtype, complex)
@@ -631,7 +631,7 @@ class TestDataContainer(CCPiTestClass):
         detectors =  10
 
         # Angles
-        angles = numpy.linspace(0,180,180, dtype='float32')
+        angles = np.linspace(0,180,180, dtype='float32')
 
         # Setup acquisition geometry
         ag = AcquisitionGeometry.create_Parallel2D()\
@@ -648,13 +648,13 @@ class TestDataContainer(CCPiTestClass):
 
 
     def complex_allocate_geometry_test(self, geometry):
-        data = geometry.allocate(dtype=numpy.complex64)
-        r = (1 + 1j*1)* numpy.ones(data.shape, dtype=data.dtype)
+        data = geometry.allocate(dtype=np.complex64)
+        r = (1 + 1j*1)* np.ones(data.shape, dtype=data.dtype)
         data.fill(r)
         self.assertAlmostEqual(data.squared_norm(), data.size * 2)  
-        numpy.testing.assert_almost_equal(data.abs().array, numpy.abs(r))              
+        np.testing.assert_almost_equal(data.abs().array, np.abs(r))              
 
-        data1 = geometry.allocate(dtype=numpy.float32)
+        data1 = geometry.allocate(dtype=np.float32)
         try:
             data1.fill(r)
             self.assertTrue(False)
@@ -673,7 +673,7 @@ class TestDataContainer(CCPiTestClass):
         detectors =  10
 
         # Angles
-        angles = numpy.linspace(0,10,10, dtype='float32')
+        angles = np.linspace(0,10,10, dtype='float32')
 
         # Setup acquisition geometry
         ag = AcquisitionGeometry.create_Parallel2D()\
@@ -692,11 +692,11 @@ class TestDataContainer(CCPiTestClass):
         vgeometry = ImageGeometry(voxel_num_x=4, voxel_num_y=3, channels=2)
         image1 = vgeometry.allocate('random', seed=0)
         image2 = vgeometry.allocate('random', seed=0)
-        numpy.testing.assert_allclose(image1.as_array(), image2.as_array())
+        np.testing.assert_allclose(image1.as_array(), image2.as_array())
 
 
     def test_AcquisitionDataSubset(self):
-        sgeometry = AcquisitionGeometry.create_Parallel3D().set_angles(numpy.linspace(0, 180, num=10)).set_panel((5,3)).set_channels(2)
+        sgeometry = AcquisitionGeometry.create_Parallel3D().set_angles(np.linspace(0, 180, num=10)).set_panel((5,3)).set_channels(2)
 
         # expected dimension_labels
         
@@ -765,7 +765,7 @@ class TestDataContainer(CCPiTestClass):
         sqnorm = dc.squared_norm()
         norm = dc.norm()
         self.assertEqual(sqnorm, 8.0)
-        numpy.testing.assert_almost_equal(norm, numpy.sqrt(8.0), decimal=7)
+        np.testing.assert_almost_equal(norm, np.sqrt(8.0), decimal=7)
     
 
     def test_reduction_mean(self):
@@ -779,151 +779,151 @@ class TestDataContainer(CCPiTestClass):
         data.fill(np_arr)
 
         mean = data.mean()
-        expected = numpy.float64(0+1+2+3)/numpy.float64(4)
-        numpy.testing.assert_almost_equal(mean, expected)
+        expected = np.float64(0+1+2+3)/np.float64(4)
+        np.testing.assert_almost_equal(mean, expected)
         
         
     def test_multiply_out(self):
         ig = ImageGeometry(10,11,12)
         u = ig.allocate()
-        a = numpy.ones(u.shape)
+        a = np.ones(u.shape)
         
         u.fill(a)
         
-        numpy.testing.assert_array_equal(a, u.as_array())
+        np.testing.assert_array_equal(a, u.as_array())
         
         #u = ig.allocate(ImageGeometry.RANDOM_INT, seed=1)
         l = functools.reduce(lambda x,y: x*y, (10,11,12), 1)
         
-        a = numpy.zeros((l, ), dtype=numpy.float32)
+        a = np.zeros((l, ), dtype=np.float32)
         for i in range(l):
-            a[i] = numpy.sin(2 * i* 3.1415/l)
-        b = numpy.reshape(a, u.shape)
+            a[i] = np.sin(2 * i* 3.1415/l)
+        b = np.reshape(a, u.shape)
         u.fill(b)
-        numpy.testing.assert_array_equal(b, u.as_array())
+        np.testing.assert_array_equal(b, u.as_array())
         
         u.multiply(2, out=u)
         c = b * 2
-        numpy.testing.assert_allclose(u.as_array(), c)
+        np.testing.assert_allclose(u.as_array(), c)
 
 
     def test_sapyb_datacontainer_f(self):
         #a vec, b vec
         
         ig = ImageGeometry(10,10)                                               
-        d1 = ig.allocate(dtype=numpy.float32)                                                     
-        d2 = ig.allocate(dtype=numpy.float32)   
-        a = ig.allocate(dtype=numpy.float32)                                                  
-        b = ig.allocate(dtype=numpy.float32)         
+        d1 = ig.allocate(dtype=np.float32)                                                     
+        d2 = ig.allocate(dtype=np.float32)   
+        a = ig.allocate(dtype=np.float32)                                                  
+        b = ig.allocate(dtype=np.float32)         
 
-        d1.fill(numpy.asarray(numpy.arange(1,101).reshape(10,10), dtype=numpy.float32))
-        d2.fill(numpy.asarray(numpy.arange(1,101).reshape(10,10), dtype=numpy.float32))
+        d1.fill(np.asarray(np.arange(1,101).reshape(10,10), dtype=np.float32))
+        d2.fill(np.asarray(np.arange(1,101).reshape(10,10), dtype=np.float32))
         a.fill(1.0/d1.as_array())                                                  
         b.fill(-1.0/d2.as_array())   
 
-        out = ig.allocate(-1,dtype=numpy.float32)                                                 
+        out = ig.allocate(-1,dtype=np.float32)                                                 
         # equals to 1 + -1 = 0
         out = d1.sapyb(a,d2,b)
-        res = numpy.zeros_like(d1.as_array())
-        numpy.testing.assert_array_equal(res, out.as_array())
+        res = np.zeros_like(d1.as_array())
+        np.testing.assert_array_equal(res, out.as_array())
 
         out.fill(0)
         d1.sapyb(a,d2,b, out)
-        res = numpy.zeros_like(d1.as_array())
-        numpy.testing.assert_array_equal(res, out.as_array())
+        res = np.zeros_like(d1.as_array())
+        np.testing.assert_array_equal(res, out.as_array())
 
 
     def test_sapyb_scalar_f(self):
         # a,b scalar
         ig = ImageGeometry(10,10)                                               
-        d1 = ig.allocate(1, dtype=numpy.float32)                                                     
-        d2 = ig.allocate(2, dtype=numpy.float32)   
+        d1 = ig.allocate(1, dtype=np.float32)                                                     
+        d2 = ig.allocate(2, dtype=np.float32)   
         a = 2.
         b = -1.
 
-        out = ig.allocate(-1,dtype=numpy.float32)                                                 
+        out = ig.allocate(-1,dtype=np.float32)                                                 
         # equals to 2*[1] + -1*[2] = 0
         out = d1.sapyb(a,d2,b)
-        res = numpy.zeros_like(d1.as_array())
-        numpy.testing.assert_array_equal(res, out.as_array())
+        res = np.zeros_like(d1.as_array())
+        np.testing.assert_array_equal(res, out.as_array())
 
         out.fill(0)
         d1.sapyb(a,d2,b, out)
-        numpy.testing.assert_array_equal(res, out.as_array())
+        np.testing.assert_array_equal(res, out.as_array())
 
         d1.sapyb(a,d2,b, out=d1)
-        numpy.testing.assert_array_equal(res, d1.as_array())
+        np.testing.assert_array_equal(res, d1.as_array())
 
         d1.fill(1)
         d1.sapyb(a,d2,b, out=d2)
-        numpy.testing.assert_array_equal(res, d2.as_array())
+        np.testing.assert_array_equal(res, d2.as_array())
 
 
     def test_sapyb_datacontainer_scalar_f(self):
         #mix: a scalar and b DataContainer and a DataContainer and b scalar
         ig = ImageGeometry(10,10)                                               
-        d1 = ig.allocate(1., dtype=numpy.complex64)                                                     
-        d2 = ig.allocate(2.,dtype=numpy.complex64)   
+        d1 = ig.allocate(1., dtype=np.complex64)                                                     
+        d2 = ig.allocate(2.,dtype=np.complex64)   
         a = 2.+2j                                                
-        b = ig.allocate(-1.-1j, dtype=numpy.complex64)         
+        b = ig.allocate(-1.-1j, dtype=np.complex64)         
 
-        out = ig.allocate(-1,dtype=numpy.complex64)
+        out = ig.allocate(-1,dtype=np.complex64)
         # equals to (2+2j)*[1] + -(1+j)*[2] = 0
         
         out = d1.sapyb(a,d2,b)
-        res = ig.allocate(0, dtype=numpy.complex64)
-        numpy.testing.assert_array_equal(res.as_array(), out.as_array())
+        res = ig.allocate(0, dtype=np.complex64)
+        np.testing.assert_array_equal(res.as_array(), out.as_array())
 
         out.fill(-1)
         d1.sapyb(a,d2,b, out)
-        numpy.testing.assert_array_equal(res.as_array(), out.as_array())
+        np.testing.assert_array_equal(res.as_array(), out.as_array())
 
         out = d2.sapyb(b,d1,a)
-        res = ig.allocate(0, dtype=numpy.complex64)
-        numpy.testing.assert_array_equal(res.as_array(), out.as_array())
+        res = ig.allocate(0, dtype=np.complex64)
+        np.testing.assert_array_equal(res.as_array(), out.as_array())
 
         out.fill(-1)
         d2.sapyb(b,d1,a, out)
-        numpy.testing.assert_array_equal(res.as_array(), out.as_array())
+        np.testing.assert_array_equal(res.as_array(), out.as_array())
 
 
     def test_sapyb_scalar_c(self):
         # a, b scalar
         ig = ImageGeometry(10,10)                                               
-        d1 = ig.allocate(1, dtype=numpy.complex64)                                                     
-        d2 = ig.allocate(2, dtype=numpy.complex64)   
+        d1 = ig.allocate(1, dtype=np.complex64)                                                     
+        d2 = ig.allocate(2, dtype=np.complex64)   
         a = 2.+2j
         b = -1.-1j
 
-        out = ig.allocate(-1,dtype=numpy.complex64)                                                 
+        out = ig.allocate(-1,dtype=np.complex64)                                                 
         # equals to (2+2j)*[1] + -(1+j)*[2] = 0
         out = d1.sapyb(a,d2,b)
-        res = numpy.zeros_like(d1.as_array())
-        numpy.testing.assert_array_equal(res, out.as_array())
+        res = np.zeros_like(d1.as_array())
+        np.testing.assert_array_equal(res, out.as_array())
 
         out.fill(0)
         d1.sapyb(a,d2,b, out)
-        numpy.testing.assert_array_equal(res, out.as_array())
+        np.testing.assert_array_equal(res, out.as_array())
 
         d1.sapyb(a,d2,b, out=d1)
-        numpy.testing.assert_array_equal(res, d1.as_array())
+        np.testing.assert_array_equal(res, d1.as_array())
 
         d1.fill(1)
         d1.sapyb(a,d2,b, out=d2)
-        numpy.testing.assert_array_equal(res, d2.as_array())
+        np.testing.assert_array_equal(res, d2.as_array())
 
 
     def test_sapyb_datacontainer_c(self):
         #a vec, b vec
         ig = ImageGeometry(10,10)                                               
-        d1 = ig.allocate(dtype=numpy.complex64)                                                     
-        d2 = ig.allocate(dtype=numpy.complex64)   
-        a = ig.allocate(dtype=numpy.complex64)                                                  
-        b = ig.allocate(dtype=numpy.complex64)         
+        d1 = ig.allocate(dtype=np.complex64)                                                     
+        d2 = ig.allocate(dtype=np.complex64)   
+        a = ig.allocate(dtype=np.complex64)                                                  
+        b = ig.allocate(dtype=np.complex64)         
 
-        arr = numpy.empty(ig.shape, dtype=numpy.complex64)
-        arr.real = numpy.asarray(numpy.arange(1,101).reshape(10,10), dtype=numpy.float32)
-        arr.imag = numpy.asarray(numpy.arange(1,101).reshape(10,10), dtype=numpy.float32)
+        arr = np.empty(ig.shape, dtype=np.complex64)
+        arr.real = np.asarray(np.arange(1,101).reshape(10,10), dtype=np.float32)
+        arr.imag = np.asarray(np.arange(1,101).reshape(10,10), dtype=np.float32)
 
         d1.fill(arr)
 
@@ -933,72 +933,72 @@ class TestDataContainer(CCPiTestClass):
         a.fill(d2.as_array())                                                  
         b.fill(d1.as_array())   
 
-        out = ig.allocate(-1,dtype=numpy.complex64)
+        out = ig.allocate(-1,dtype=np.complex64)
         # equals to d1^ * d1 + d2^*d2 = d1**2 + d2**2 = 2* arr.norm = 2 * (arr.real **2 + arr.imag **2)
         out = d1.sapyb(a,d2,b)
         res = 2* (arr.real * arr.real + arr.imag * arr.imag)
-        numpy.testing.assert_array_equal(res, out.as_array())
+        np.testing.assert_array_equal(res, out.as_array())
 
         out.fill(0)
         d1.sapyb(a,d2,b, out)
-        numpy.testing.assert_array_equal(res, out.as_array())
+        np.testing.assert_array_equal(res, out.as_array())
 
 
     def test_sapyb_datacontainer_scalar_c(self):
         #mix: a scalar and b DataContainer and a DataContainer and b scalar
         ig = ImageGeometry(10,10)                                               
-        d1 = ig.allocate(1., dtype=numpy.complex64)                                                     
-        d2 = ig.allocate(2.,dtype=numpy.complex64)   
+        d1 = ig.allocate(1., dtype=np.complex64)                                                     
+        d2 = ig.allocate(2.,dtype=np.complex64)   
         a = 2.+2j                                                
-        b = ig.allocate(-1.-1j, dtype=numpy.complex64)         
+        b = ig.allocate(-1.-1j, dtype=np.complex64)         
 
 
-        out = ig.allocate(-1,dtype=numpy.complex64)
+        out = ig.allocate(-1,dtype=np.complex64)
         # equals to (2+2j)*[1] + -(1+j)*[2] = 0
         
         out = d1.sapyb(a,d2,b)
-        res = ig.allocate(0, dtype=numpy.complex64)
-        numpy.testing.assert_array_equal(res.as_array(), out.as_array())
+        res = ig.allocate(0, dtype=np.complex64)
+        np.testing.assert_array_equal(res.as_array(), out.as_array())
 
         out.fill(-1)
         d1.sapyb(a,d2,b, out)
-        numpy.testing.assert_array_equal(res.as_array(), out.as_array())
+        np.testing.assert_array_equal(res.as_array(), out.as_array())
 
         out = d2.sapyb(b,d1,a)
-        res = ig.allocate(0, dtype=numpy.complex64)
-        numpy.testing.assert_array_equal(res.as_array(), out.as_array())
+        res = ig.allocate(0, dtype=np.complex64)
+        np.testing.assert_array_equal(res.as_array(), out.as_array())
 
         out.fill(-1)
         d2.sapyb(b,d1,a, out)
-        numpy.testing.assert_array_equal(res.as_array(), out.as_array())
+        np.testing.assert_array_equal(res.as_array(), out.as_array())
 
 
     def test_sapyb_scalar_f_c(self):
         # a,b scalar
         ig = ImageGeometry(10,10)                                               
-        d1 = ig.allocate(1, dtype=numpy.complex64)                                                     
-        d2 = ig.allocate(2, dtype=numpy.float32)   
+        d1 = ig.allocate(1, dtype=np.complex64)                                                     
+        d2 = ig.allocate(2, dtype=np.float32)   
         a = 2.+1j
         b = -1.
 
         # equals to 2*[1] + -1*[2] = 0
         out = d1.sapyb(a,d2,b)
-        res = numpy.zeros_like(d1.as_array()) + 1j
-        numpy.testing.assert_array_equal(res, out.as_array())
+        res = np.zeros_like(d1.as_array()) + 1j
+        np.testing.assert_array_equal(res, out.as_array())
 
         out.fill(0)
         d1.sapyb(a,d2,b, out)
-        numpy.testing.assert_array_equal(res, out.as_array())
+        np.testing.assert_array_equal(res, out.as_array())
 
         d1.sapyb(a,d2,b, out=d1)
-        numpy.testing.assert_array_equal(res, d1.as_array())
+        np.testing.assert_array_equal(res, d1.as_array())
 
         d1.fill(1)
         try:
-            with self.assertRaises(numpy.core._exceptions.UFuncTypeError) as context:
+            with self.assertRaises(np.core._exceptions.UFuncTypeError) as context:
                 d1.sapyb(a,d2,b, out=d2)
         except AttributeError as ae:
-            logging.info ("Probably numpy version too low: {}".format(ae))
+            logging.info ("Probably np version too low: {}".format(ae))
 
         # print ("Exception thrown:", str(context.exception))
         
@@ -1007,12 +1007,12 @@ class TestDataContainer(CCPiTestClass):
         d2.fill(2)
         d1.sapyb(a,d2,b,out=d1)
         # 2+1j * [1+0j] -1 * [2]
-        numpy.testing.assert_array_equal(1j * numpy.ones_like(d1.as_array()), d1.as_array())
+        np.testing.assert_array_equal(1j * np.ones_like(d1.as_array()), d1.as_array())
             
 
     def test_min(self):
         ig = ImageGeometry(10,10)     
-        a = numpy.asarray(numpy.linspace(-10,10, num=100, endpoint=True), dtype=numpy.float32)
+        a = np.asarray(np.linspace(-10,10, num=100, endpoint=True), dtype=np.float32)
         a = a.reshape((10,10))
         d1 = ig.allocate(1)                                                     
         d1.fill(a)                                                     
@@ -1021,7 +1021,7 @@ class TestDataContainer(CCPiTestClass):
 
     def test_max(self):
         ig = ImageGeometry(10,10)     
-        a = numpy.asarray(numpy.linspace(-10,10, num=100, endpoint=True), dtype=numpy.float32)
+        a = np.asarray(np.linspace(-10,10, num=100, endpoint=True), dtype=np.float32)
         a = a.reshape((10,10))
         d1 = ig.allocate(1)                                                     
         d1.fill(a)                                                     
@@ -1034,7 +1034,7 @@ class TestDataContainer(CCPiTestClass):
                                                 
         self.assertEqual( d1.size, 100 )
         
-        sgeometry = AcquisitionGeometry.create_Parallel3D().set_angles(numpy.linspace(0, 180, num=10)).set_panel((5,3)).set_channels(2)
+        sgeometry = AcquisitionGeometry.create_Parallel3D().set_angles(np.linspace(0, 180, num=10)).set_panel((5,3)).set_channels(2)
 
         ad = sgeometry.allocate()
 
@@ -1043,35 +1043,35 @@ class TestDataContainer(CCPiTestClass):
 
     def test_negation(self):
         X, Y, Z = 256, 512, 512
-        a = numpy.ones((X, Y, Z), dtype='int32')
+        a = np.ones((X, Y, Z), dtype='int32')
         
         ds = - DataContainer(a, False, ['X', 'Y', 'Z'])
         
-        numpy.testing.assert_array_equal(ds.as_array(), -a)
+        np.testing.assert_array_equal(ds.as_array(), -a)
 
 
     def test_fill_dimension_ImageData(self):
         ig = ImageGeometry(2,3,4)
         u = ig.allocate(0)
-        a = numpy.ones((4,2))
+        a = np.ones((4,2))
         # default_labels = [ImageGeometry.VERTICAL, ImageGeometry.HORIZONTAL_Y, ImageGeometry.HORIZONTAL_X]
         
         data = u.as_array()
         axis_number = u.get_dimension_axis('horizontal_y')
         
         u.fill(a, horizontal_y=0)
-        numpy.testing.assert_array_equal(u.get_slice(horizontal_y=0).as_array(), a)
+        np.testing.assert_array_equal(u.get_slice(horizontal_y=0).as_array(), a)
 
         u.fill(2, horizontal_y=1)
-        numpy.testing.assert_array_equal(u.get_slice(horizontal_y=1).as_array(), 2 * a)
+        np.testing.assert_array_equal(u.get_slice(horizontal_y=1).as_array(), 2 * a)
 
         u.fill(2, horizontal_y=1)
-        numpy.testing.assert_array_equal(u.get_slice(horizontal_y=1).as_array(), 2 * a)
+        np.testing.assert_array_equal(u.get_slice(horizontal_y=1).as_array(), 2 * a)
         
         b = u.get_slice(horizontal_y=2)
         b.fill(3)
         u.fill(b, horizontal_y=2)
-        numpy.testing.assert_array_equal(u.get_slice(horizontal_y=2).as_array(), 3 * a)
+        np.testing.assert_array_equal(u.get_slice(horizontal_y=2).as_array(), 3 * a)
 
 
     def test_fill_dimension_AcquisitionData(self):
@@ -1081,30 +1081,30 @@ class TestDataContainer(CCPiTestClass):
         ag.set_angles([0,1,2,3,5])
         ag.set_labels(('horizontal','angle','vertical','channel'))
         u = ag.allocate(0)
-        a = numpy.ones((4,2))
+        a = np.ones((4,2))
         # default_labels = [ImageGeometry.VERTICAL, ImageGeometry.HORIZONTAL_Y, ImageGeometry.HORIZONTAL_X]
         
         data = u.as_array()
         axis_number = u.get_dimension_axis('horizontal_y')
         
         u.fill(a, horizontal_y=0)
-        numpy.testing.assert_array_equal(u.subset(horizontal_y=0).as_array(), a)
+        np.testing.assert_array_equal(u.subset(horizontal_y=0).as_array(), a)
 
         u.fill(2, horizontal_y=1)
-        numpy.testing.assert_array_equal(u.subset(horizontal_y=0).as_array(), 2 * a)
+        np.testing.assert_array_equal(u.subset(horizontal_y=0).as_array(), 2 * a)
 
         u.fill(2, horizontal_y=1)
-        numpy.testing.assert_array_equal(u.subset(horizontal_y=1).as_array(), 2 * a)
+        np.testing.assert_array_equal(u.subset(horizontal_y=1).as_array(), 2 * a)
         
         b = u.subset(horizontal_y=2)
         b.fill(3)
         u.fill(b, horizontal_y=2)
-        numpy.testing.assert_array_equal(u.subset(horizontal_y=2).as_array(), 3 * a)
+        np.testing.assert_array_equal(u.subset(horizontal_y=2).as_array(), 3 * a)
 
         # slice with 2 axis
-        a = numpy.ones((2,))
+        a = np.ones((2,))
         u.fill(a, horizontal_y=1, vertical=0)
-        numpy.testing.assert_array_equal(u.subset(horizontal_y=1, vertical=0).as_array(), a)
+        np.testing.assert_array_equal(u.subset(horizontal_y=1, vertical=0).as_array(), a)
 
 
     def test_fill_dimension_AcquisitionData(self):
@@ -1115,24 +1115,22 @@ class TestDataContainer(CCPiTestClass):
         ag.set_labels(('horizontal','angle','vertical','channel'))
         u = ag.allocate(0)
         # (2, 5, 3, 4)
-        a = numpy.ones((2,5))
+        a = np.ones((2,5))
         # default_labels = [ImageGeometry.VERTICAL, ImageGeometry.HORIZONTAL_Y, ImageGeometry.HORIZONTAL_X]
         b = u.get_slice(channel=0, vertical=0)
         data = u.as_array()
         
         u.fill(a, channel=0, vertical=0)
-        numpy.testing.assert_array_equal(u.get_slice(channel=0, vertical=0).as_array(), a)
+        np.testing.assert_array_equal(u.get_slice(channel=0, vertical=0).as_array(), a)
 
         u.fill(2, channel=0, vertical=0)
-        numpy.testing.assert_array_equal(u.get_slice(channel=0, vertical=0).as_array(), 2 * a)
+        np.testing.assert_array_equal(u.get_slice(channel=0, vertical=0).as_array(), 2 * a)
 
         u.fill(2, channel=0, vertical=0)
-        numpy.testing.assert_array_equal(u.get_slice(channel=0, vertical=0).as_array(), 2 * a)
+        np.testing.assert_array_equal(u.get_slice(channel=0, vertical=0).as_array(), 2 * a)
         
         b = u.get_slice(channel=0, vertical=0)
         b.fill(3)
         u.fill(b, channel=1, vertical=1)
-        numpy.testing.assert_array_equal(u.get_slice(channel=1, vertical=1).as_array(), 3 * a)
+        np.testing.assert_array_equal(u.get_slice(channel=1, vertical=1).as_array(), 3 * a)
 
-
- 
