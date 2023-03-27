@@ -1137,11 +1137,16 @@ class TestDataContainer(CCPiTestClass):
 
 class TestNEP18(unittest.TestCase):
     def setUp(self) -> None:
-        N = 10
-        M = 10
+        N = 2
+        M = 3
+        self.shape = (N,M)
         self.dc = DataContainer( np.reshape( np.arange(N*M), (N, M) ) ) 
         self.dc2 = DataContainer(np.ones((N, M)))
         self.out = DataContainer(np.zeros((N, M)))
+
+        self.pixel_wise_binary_ufunc = [np.add, np.subtract, np.multiply, np.divide, np.power, np.maximum, np.minimum]
+        self.pixel_wise_unary_ufunc = [np.abs, np.sign, np.conjugate, np.sqrt, np.exp, np.log]
+        self.unary_ufunc = [np.dot, np.min, np.max, np.mean]
 
     def pixel_wise_binary(self, ufunc):
         out = ufunc(self.dc, self.dc2)
@@ -1149,6 +1154,42 @@ class TestNEP18(unittest.TestCase):
         np.testing.assert_array_equal(out.as_array(), self.out.as_array())
 
     def test_pixelwise_binary(self):
-        for ufunc in [np.add, np.subtract, np.multiply, np.divide]:
+        for ufunc in self.pixel_wise_binary_ufunc:
+            print("Testing %s" % ufunc.__name__)
             self.pixel_wise_binary(ufunc)
 
+    def pixel_wise_unary(self, ufunc):
+        out = ufunc(self.dc2)
+        ufunc(self.dc2, out=self.out)
+        np.testing.assert_array_equal(out.as_array(), self.out.as_array())
+
+    def test_pixelwise_unary(self):
+        for ufunc in self.pixel_wise_unary_ufunc:
+            print("Testing unary %s" % ufunc.__name__)
+            self.pixel_wise_unary(ufunc)
+
+    def test_reductions(self):
+        # [np.dot, np.min, np.max, np.mean]
+        res = np.dot(self.dc, self.dc2)
+        np.testing.assert_equal(res, np.dot(self.dc.as_array().ravel(), self.dc2.as_array().ravel()))
+
+        res = np.min(self.dc)
+        np.testing.assert_equal(res, 0)
+
+        res = np.max(self.dc)
+        np.testing.assert_equal(res, self.shape[0]*self.shape[1]-1)
+
+        res = np.mean(self.dc)
+        np.testing.assert_equal(res, np.mean(self.dc.as_array()))
+
+    def test_HANDLED_FUNCTIONS(self):
+        from cil.framework.framework import HANDLED_FUNCTIONS
+
+        tested_functions = self.pixel_wise_binary_ufunc + self.pixel_wise_unary_ufunc + self.unary_ufunc
+        counter = 0
+        for k,v in HANDLED_FUNCTIONS.items():
+            print (k,v)
+            if k in tested_functions:
+                counter += 1
+
+        assert len(tested_functions) == counter
