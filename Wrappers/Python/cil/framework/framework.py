@@ -2652,6 +2652,31 @@ class DataContainer(object):
             return
         else:
             return HANDLED_FUNCTIONS[ufunc](inputs, *args, out=None, **kwargs)
+    @property
+    def shape(self):
+        '''Returns the shape of the DataContainer'''
+        return self.array.shape
+
+    @property
+    def ndim(self):
+        '''Returns the ndim of the DataContainer'''
+        return self.array.ndim        
+
+    @property
+    def dtype(self):
+        '''Returns the dtype of the data array.'''
+        return self.array.dtype
+
+    def __getitem__(self, key):
+        # dim = self.geometry.dimension_labels[0]
+        # return self.get_slice(**{dim:key})
+        return self.array[key]
+
+    def __setitem__(self, key, value):
+        # dim = self.geometry.dimension_labels[0]
+        # self.array[key] = value.as_array()[:]
+        self.array[key] = value.as_array()[:]
+
 
     @property
     def geometry(self):
@@ -2681,30 +2706,11 @@ class DataContainer(object):
             self._dimension_labels = tuple(val)
         else:
             raise ValueError("dimension_labels expected a list containing {0} strings got {1}".format(self.number_of_dimensions, val))
-
-    @property
-    def shape(self):
-        '''Returns the shape of the DataContainer'''
-        return self.array.shape
-
-    @property
-    def ndim(self):
-        '''Returns the ndim of the DataContainer'''
-        return self.array.ndim        
-
-    @shape.setter
-    def shape(self, val):
-        print("Deprecated - shape will be set automatically")
-
+    
     @property
     def number_of_dimensions(self):
         '''Returns the shape of the  of the DataContainer'''
         return len(self.array.shape)
-
-    @property
-    def dtype(self):
-        '''Returns the dtype of the data array.'''
-        return self.array.dtype
 
     @property
     def size(self):
@@ -3106,8 +3112,9 @@ class DataContainer(object):
         return self.pixel_wise_binary(np.maximum, x2, *args, **kwargs)
     
     @implements(np.minimum)
-    def minimum(self,x2, out=None, *args, **kwargs):
-        return self.pixel_wise_binary(np.minimum, x2=x2, out=out, *args, **kwargs)
+    def minimum(self,x2, *args, **kwargs):
+        # kwargs.pop('out')
+        return self.pixel_wise_binary(np.minimum, x2=x2, *args, **kwargs)
 
     def sapyb(self, a, y, b, out=None, num_threads=NUM_THREADS):
         '''performs a*self + b * y. Can be done in-place
@@ -3262,7 +3269,7 @@ class DataContainer(object):
         
     ## unary operations
     def pixel_wise_unary(self, pwop, *args,  **kwargs):
-        out = kwargs.get('out', None)
+        out = kwargs.pop('out', None)
         if out is None:
             out = pwop(self.as_array() , *args, **kwargs )
             return type(self)(out,
@@ -3272,14 +3279,12 @@ class DataContainer(object):
                        suppress_warning=True)
         elif issubclass(type(out), DataContainer):
             if self.check_dimensions(out):
-                kwargs['out'] = out.as_array()
-                pwop(self.as_array(), *args, **kwargs )
+                pwop(self.as_array(), out.as_array(), *args, **kwargs )
             else:
                 raise ValueError(message(type(self),"Wrong size for data memory: ", out.shape,self.shape))
         elif issubclass(type(out), np.ndarray):
             if self.array.shape == out.shape and self.array.dtype == out.dtype:
-                kwargs['out'] = out
-                pwop(self.as_array(), *args, **kwargs)
+                pwop(self.as_array(), out, *args, **kwargs)
         else:
             raise ValueError (message(type(self),  "incompatible class:" , pwop.__name__, type(out)))
     
