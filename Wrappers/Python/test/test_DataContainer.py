@@ -1145,7 +1145,7 @@ class TestNEP18(unittest.TestCase):
         self.out = DataContainer(np.zeros((N, M)))
 
         self.pixel_wise_binary_ufunc = [np.add, np.subtract, np.multiply, np.divide, np.power, np.maximum, np.minimum]
-        self.pixel_wise_unary_ufunc = [np.abs, np.sign, np.conjugate, np.sqrt, np.exp, np.log]
+        self.pixel_wise_unary_ufunc = [np.abs, np.sign, np.conjugate, np.sqrt, np.exp, np.log, np.negative]
         self.unary_ufunc = [np.dot, np.min, np.max, np.mean]
 
     def pixel_wise_binary(self, ufunc):

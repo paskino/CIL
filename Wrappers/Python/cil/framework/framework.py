@@ -2668,9 +2668,10 @@ class DataContainer(object):
         return self.array.dtype
 
     def __getitem__(self, key):
+        # https://docs.dask.org/en/stable/array-chunks.html#array-chunks
         # dim = self.geometry.dimension_labels[0]
         # return self.get_slice(**{dim:key})
-        return self.array[key]
+        return DataContainer(self.array[key], deep_copy=False)
 
     def __setitem__(self, key, value):
         # dim = self.geometry.dimension_labels[0]
@@ -3313,6 +3314,11 @@ class DataContainer(object):
     def log(self, *args, **kwargs):
         '''Applies log pixel-wise to the DataContainer'''
         return self.pixel_wise_unary(np.log, *args, **kwargs)
+
+    @implements(np.negative)
+    def negative(self, *args, **kwargs):
+        '''Applies negative pixel-wise to the DataContainer'''
+        return self.pixel_wise_unary(np.negative, *args, **kwargs)
     
     ## reductions
     @implements(np.sum)
