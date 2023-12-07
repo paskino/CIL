@@ -17,7 +17,7 @@
 # Authors:
 # CIL Developers, listed at: https://github.com/TomographicImaging/CIL/blob/master/NOTICE.txt
 
-import numpy
+import numpy as np
 from cil.optimisation.functions import Function
 from numbers import Number
 import scipy.special
@@ -25,6 +25,7 @@ import logging
 
 try:
     from numba import jit, prange
+    import numba as nb
     has_numba = True
 except ImportError as ie:
     has_numba = False
@@ -113,7 +114,7 @@ class KullbackLeibler(Function):
         if self.eta is None:
             self.eta = self.b * 0.0
 
-        if numpy.any(self.b.as_array() < 0):            
+        if np.any(self.b.as_array() < 0):            
             raise ValueError("Input data should be non-negative.")         
 
         if KullbackLeibler.backend == 'numba':
@@ -140,7 +141,7 @@ class KullbackLeibler_numpy(KullbackLeibler):
         tmp_sum = (x + self.eta).as_array()
         ind = tmp_sum >= 0
         tmp = scipy.special.kl_div(self.b.as_array()[ind], tmp_sum[ind])             
-        return numpy.sum(tmp) 
+        return np.sum(tmp) 
 
     def gradient(self, x, out = None):
 
@@ -180,7 +181,7 @@ class KullbackLeibler_numpy(KullbackLeibler):
         tmp = 1 - x.as_array()
         ind = tmp>0
         xlogy = - scipy.special.xlogy(self.b.as_array()[ind], tmp[ind])
-        return numpy.sum(xlogy) - self.eta.dot(x)
+        return np.sum(xlogy) - self.eta.dot(x)
 
     def proximal(self, x, tau, out = None):
 
@@ -243,7 +244,7 @@ if has_numba:
             E = eta.flat[i]
             out.flat[i] = 0.5 *  ( 
                 ( X - E - tau ) +\
-                numpy.sqrt( (X + E - tau)**2. + \
+                np.sqrt( (X + E - tau)**2. + \
                     (4. * tau * b.flat[i]) 
                 )
             )
@@ -255,7 +256,7 @@ if has_numba:
             E = eta.flat[i]
             out.flat[i] = 0.5 *  ( 
                 ( X - E - t ) +\
-                numpy.sqrt( (X + E - t)**2. + \
+                np.sqrt( (X + E - t)**2. + \
                     (4. * t * b.flat[i]) 
                 )
             )
@@ -267,7 +268,7 @@ if has_numba:
                 E = eta.flat[i]
                 out.flat[i] = 0.5 *  ( 
                     ( X - E - tau ) +\
-                    numpy.sqrt( (X + E - tau)**2. + \
+                    np.sqrt( (X + E - tau)**2. + \
                         (4. * tau * b.flat[i]) 
                     )
                 )
@@ -280,7 +281,7 @@ if has_numba:
                 E = eta.flat[i]
                 out.flat[i] = 0.5 *  ( 
                     ( X - E - t ) +\
-                    numpy.sqrt( (X + E - t)**2. + \
+                    np.sqrt( (X + E - t)**2. + \
                         (4. * t * b.flat[i]) 
                     )
                 )
@@ -293,7 +294,7 @@ if has_numba:
             t = tau.flat[i]
             z = x.flat[i] + ( t * eta.flat[i] )
             out.flat[i] = 0.5 * ( 
-                (z + 1) - numpy.sqrt((z-1)*(z-1) + 4 * t * b.flat[i])
+                (z + 1) - np.sqrt((z-1)*(z-1) + 4 * t * b.flat[i])
                 )
         
     @jit(parallel=True, nopython=True)
@@ -303,7 +304,7 @@ if has_numba:
         for i in prange(x.size):
             z = x.flat[i] + ( tau * eta.flat[i] )
             out.flat[i] = 0.5 * ( 
-                (z + 1) - numpy.sqrt((z-1)*(z-1) + 4 * tau * b.flat[i])
+                (z + 1) - np.sqrt((z-1)*(z-1) + 4 * tau * b.flat[i])
                 )
 
     @jit(parallel=True, nopython=True)
@@ -315,7 +316,7 @@ if has_numba:
                 t = tau.flat[i]
                 z = x.flat[i] + ( t * eta.flat[i] )
                 out.flat[i] = 0.5 * ( 
-                    (z + 1) - numpy.sqrt((z-1)*(z-1) + 4 * t * b.flat[i])
+                    (z + 1) - np.sqrt((z-1)*(z-1) + 4 * t * b.flat[i])
                     )
         
     @jit(parallel=True, nopython=True)
@@ -326,7 +327,7 @@ if has_numba:
             if mask.flat[i] > 0:
                 z = x.flat[i] + ( tau * eta.flat[i] )
                 out.flat[i] = 0.5 * ( 
-                    (z + 1) - numpy.sqrt((z-1)*(z-1) + 4 * tau * b.flat[i])
+                    (z + 1) - np.sqrt((z-1)*(z-1) + 4 * tau * b.flat[i])
                     )
     # gradient
     @jit(parallel=True, nopython=True)
@@ -342,20 +343,22 @@ if has_numba:
     # KL divergence
     @jit(parallel=True, nopython=True)
     def kl_div(x, y, eta):
-        accumulator = 0.
+        accumulators = np.zeros((nb.get_num_threads()))
         for i in prange(x.size):
+            j = nb.np.ufunc.parallel._get_thread_id()
             X = x.flat[i]
             Y = y.flat[i] + eta.flat[i]
             if X > 0 and Y > 0:
-                # out.flat[i] = X * numpy.log(X/Y) - X + Y
-                accumulator += X * numpy.log(X/Y) - X + Y
+                # out.flat[i] = X * np.log(X/Y) - X + Y
+                accumulators[j] += X * np.log(X/Y) - X + Y
             elif X == 0 and Y >= 0:
                 # out.flat[i] = Y
-                accumulator += Y
+                accumulators[j] += Y
             else:
-                # out.flat[i] = numpy.inf
-                return numpy.inf
-        return accumulator
+                # out.flat[i] = np.inf
+                return np.inf
+        return np.sum(accumulators)
+
     @jit(parallel=True, nopython=True)
     def kl_div_mask(x, y, eta, mask):
         accumulator = 0.
@@ -364,14 +367,14 @@ if has_numba:
                 X = x.flat[i]
                 Y = y.flat[i] + eta.flat[i]
                 if X > 0 and Y > 0:
-                    # out.flat[i] = X * numpy.log(X/Y) - X + Y
-                    accumulator += X * numpy.log(X/Y) - X + Y
+                    # out.flat[i] = X * np.log(X/Y) - X + Y
+                    accumulator += X * np.log(X/Y) - X + Y
                 elif X == 0 and Y >= 0:
                     # out.flat[i] = Y
                     accumulator += Y
                 else:
-                    # out.flat[i] = numpy.inf
-                    return numpy.inf
+                    # out.flat[i] = np.inf
+                    return np.inf
         return accumulator
 
     # convex conjugate
@@ -384,8 +387,8 @@ if has_numba:
             Y = 1 - x_f
             if Y > 0:
                 if X > 0:
-                    # out.flat[i] = X * numpy.log(X/Y) - X + Y
-                    accumulator += X * numpy.log(Y)
+                    # out.flat[i] = X * np.log(X/Y) - X + Y
+                    accumulator += X * np.log(Y)
                 # else xlogy is 0 so it doesn't add to the accumulator
                 accumulator += eta.flat[i] * x_f
         return - accumulator
@@ -401,8 +404,8 @@ if has_numba:
                 Y = 1 - x_f
                 if Y > 0:
                     if X > 0:
-                        # out.flat[i] = X * numpy.log(X/Y) - X + Y
-                        accumulator += X * numpy.log(Y)
+                        # out.flat[i] = X * np.log(X/Y) - X + Y
+                        accumulator += X * np.log(Y)
                     # else xlogy is 0 so it doesn't add to the accumulator
                     accumulator += eta.flat[i] * x_f
         return - accumulator
