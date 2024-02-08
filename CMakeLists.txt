@@ -24,8 +24,10 @@ else()
 endif()
 
 project (cil LANGUAGES CXX)
-
+if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.27)
 cmake_policy(SET CMP0148 OLD)
+endif()
+
 
 # If APPLE don't use @rpath
 if (APPLE)
