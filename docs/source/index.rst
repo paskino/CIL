@@ -80,7 +80,7 @@ Software documentation Index
    utilities
    plugins
    developer_guide
-   
+   example
 
 .. Indices and tables
 .. ==================
