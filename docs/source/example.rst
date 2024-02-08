@@ -1,11 +1,18 @@
-## Example notebook rendered
+Example notebook rendered
+*************************
 
-### This is the sub title
-
-This is an example
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Contents:
 
    notebooks/deriv2_cgls
+   notebooks/test
+
+
+Thumbnails gallery
+==================
+
+.. nbgallery::
+   notebooks/deriv2_cgls
+   notebooks/test

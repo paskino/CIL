@@ -25,6 +25,8 @@ endif()
 
 project (cil LANGUAGES CXX)
 
+cmake_policy(SET CMP0148 OLD)
+
 # If APPLE don't use @rpath
 if (APPLE)
   option(SHARED_LIBS_ABS_PATH "Force shared libraries to be installed with absolute paths (as opposed to rpaths)" ON)
