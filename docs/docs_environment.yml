@@ -31,4 +31,5 @@ dependencies:
   - sphinxcontrib-bibtex
   - nbsphinx
   - sphinx-gallery
+  - sphinx-copybutton
   - jupyter

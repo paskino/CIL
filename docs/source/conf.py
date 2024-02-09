@@ -68,7 +68,8 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinxcontrib.bibtex',
     'nbsphinx',
-    'sphinx_gallery.load_style'
+    'sphinx_gallery.load_style',
+    'sphinx_copybutton'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
