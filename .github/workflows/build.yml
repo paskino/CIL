@@ -76,7 +76,7 @@ jobs:
     - name: build cil
       run: |
         mkdir build && cd build
-        cmake .. -DCMAKE_BUILD_TYPE=Release -DCONDA_BUILD=ON -DCMAKE_INSTALL_PREFIX="$CONDA_PREFIX"
+        cmake .. -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCONDA_BUILD=ON -DCMAKE_INSTALL_PREFIX="$CONDA_PREFIX"
         cmake --build . --target install
     - name: checkout docs
       uses: actions/checkout@v4
@@ -95,6 +95,7 @@ jobs:
         cd ../..
         sphinx-build -b dirhtml source "build/$docs_dir"
         sed 's#DESTINATION#nightly#g' .redirect-template.html > build/index.html
+        ./mkversions.py
     - uses: actions/upload-artifact@v4
       with:
         name: DocumentationHTML
