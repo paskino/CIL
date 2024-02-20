@@ -468,7 +468,7 @@ class ImageGeometry(object):
             repres += "center : x{0},y{1}\n".format(self.center_x, self.center_y)
 
         return repres
-    def allocate(self, value=0, dtype=numpy.float32, backend='numpy', **kwargs):
+    def allocate(self, value=0, dtype=None, backend='numpy', **kwargs):
         '''allocates an ImageData according to the size expressed in the instance
         
         :param value: accepts numbers to allocate an uniform array, or a string as 'random' or 'random_int' to create a random array or None.
@@ -477,10 +477,11 @@ class ImageGeometry(object):
         :type dtype: numpy type, default numpy.float32
         '''
 
-        dtype = kwargs.get('dtype', self.dtype)
-
         if kwargs.get('dimension_labels', None) is not None:
             raise ValueError("Deprecated: 'dimension_labels' cannot be set with 'allocate()'. Use 'geometry.set_labels()' to modify the geometry before using allocate.")
+        
+        if dtype is None:
+            dtype = self.dtype
 
         out = ImageData(geometry=self.copy(), 
                             dtype=dtype,
@@ -3625,12 +3626,8 @@ class ImageData(DataContainer):
                  dimension_labels=None,
                  **kwargs):
 
-        dtype = kwargs.get('dtype', numpy.float32)
-    
-
         if geometry is None:
             raise AttributeError("ImageData requires a geometry")
-            
 
         labels = dimension_labels
         if labels is not None and labels != geometry.dimension_labels:
@@ -3825,9 +3822,8 @@ class AcquisitionData(DataContainer, Partitioner):
                  array = None, 
                  deep_copy=True, 
                  geometry = None,
+                 dtype = numpy.float32,
                  **kwargs):
-
-        dtype = kwargs.get('dtype', numpy.float32)
 
         if geometry is None:
             raise AttributeError("AcquisitionData requires a geometry")
