@@ -60,7 +60,8 @@ class TDataContainerAlgebra(object):
             np.ones(image1.shape, dtype=np.float32), tmp1.as_array().get()
             )
         
-        image1 /= image2
+        tmp1.fill(2.)
+        image1 /= tmp1
         np.testing.assert_array_almost_equal(
             np.ones(image1.shape, dtype=np.float32), image1.as_array().get()
             )        
@@ -410,23 +411,11 @@ class TDataContainerAlgebra(object):
 class TestCupyIntegrationImageData(TestCase, TDataContainerAlgebra):
 
     def setUp(self):
-        ig = ImageGeometry(100,100)
+        ig = ImageGeometry(10,10)
 
-        # cp.copyto(garr, camera.as_array().get())
-        # garr = cp.array(camera.as_array().get())
+        self.image1 = ImageData(cp.ones(ig.shape, dtype=np.float32), geometry=ig, backend='cupy')
 
-
-        # datac = ImageData(geometry=camera.geometry, backend='np')
-        self.image1 = ImageData(geometry=ig, backend='cupy')
-
-        self.image2 = ImageData(geometry=ig, backend='cupy')
-        
-        
-        # print ("python copying")
-        # for i in range(datag.shape[0]):
-        #     for j in range(datag.shape[1]):
-        #         datag.array[i,j] = camera.as_array().get()[i,j]
-        # print ("done")
+        self.image2 = ImageData(cp.ones(ig.shape, dtype=np.float32), geometry=ig, backend='cupy')
         
 
     def tearDown(self):
@@ -438,7 +427,6 @@ class TestCupyIntegrationImageData(TestCase, TDataContainerAlgebra):
 
         cpy = self.image1.copy()
         assert id(cpy) != id(self.image1)
-        print (self.image1.backend, cpy.backend)
         assert self.image1.backend == cpy.backend
 
     def test_creation_and_copy_ImageData(self):
@@ -448,20 +436,8 @@ class TestCupyIntegrationImageData(TestCase, TDataContainerAlgebra):
         arr = np.array(camera.as_array(), dtype=new.dtype)
         print (arr.dtype)
         new.fill(arr)
-        
-        # should assert that fails
-        # self.image1.fill(camera)
-        
+
         self.image1.fill(new)
-        # garr = datag.array
-        # print (type(garr))
-
-
-
-        # from cil.utilities.display import show2D
-        # # show2D([garr.get(), camera])
-        # show2D([datag.as_array().get().get(), camera])
-
         
         np.testing.assert_almost_equal(self.image1.as_array().get(), camera.as_array())
         

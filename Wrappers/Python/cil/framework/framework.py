@@ -2916,7 +2916,7 @@ class DataContainer(object):
                         if self.geometry != array.geometry:
                             
                             if self.backend == 'cupy':
-                                self.array = cp.array(array)
+                                self.array = cp.array(array.array)
                             elif self.backend == 'numpy':
                                 numpy.copyto(self.array, array.subset(dimensions=array.dimension_labels).as_array())
                             else:
