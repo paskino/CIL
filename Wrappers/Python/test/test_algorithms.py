@@ -145,7 +145,7 @@ class TestAlgorithms(CCPiTestClass):
         vg = VectorGeometry(2)
         x = vg.allocate('random_int', seed=2)
         # x = vg.allocate('random', seed=1) 
-        x.fill(numpy.asarray([10.,-3.], dtype=numpy.float32))
+        x.fill(np.asarray([10.,-3.], dtype=np.float32))
         
         max_iter = 10000
         update_interval = 1000
@@ -188,7 +188,7 @@ class TestAlgorithms(CCPiTestClass):
         initial = ig.allocate()
         b = initial.copy()
         # fill with random numbers
-        b.fill(numpy.asarray(numpy.random.random(initial.shape), dtype=numpy.float32))
+        b.fill(np.asarray(np.random.random(initial.shape), dtype=np.float32))
         initial = ig.allocate(ImageGeometry.RANDOM)
         identity = IdentityOperator(ig)
 
@@ -314,7 +314,7 @@ class TestAlgorithms(CCPiTestClass):
         initial = ig.allocate()
         b = initial.copy()
         # fill with random numbers  
-        b.fill(numpy.asarray(numpy.random.random(initial.shape), dtype=numpy.float32))
+        b.fill(np.asarray(np.random.random(initial.shape), dtype=np.float32))
         initial = ig.allocate(ImageGeometry.RANDOM)
         identity = IdentityOperator(ig)
 
