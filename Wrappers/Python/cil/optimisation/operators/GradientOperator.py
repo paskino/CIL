@@ -110,6 +110,8 @@ class GradientOperator(LinearOperator):
                 logging.warning("C backend is only implemented for forward differences - defaulting to `numpy` backend")
         if backend == NUMPY:
             self.operator = Gradient_numpy(domain_geometry, bnd_cond=bnd_cond, **kwargs)
+        elif backend == 'cupy':
+            self.operator = Gradient_numpy(domain_geometry, bnd_cond=bnd_cond, backend=backend, **kwargs)
         else:
             self.operator = Gradient_C(domain_geometry, bnd_cond=bnd_cond, **kwargs)
 
@@ -185,7 +187,7 @@ class GradientOperator(LinearOperator):
 
 class Gradient_numpy(LinearOperator):
     
-    def __init__(self, domain_geometry, method = 'forward', bnd_cond = 'Neumann', **kwargs):
+    def __init__(self, domain_geometry, method = 'forward', bnd_cond = 'Neumann', backend='numpy', **kwargs):
         '''creator
         
         :param gm_domain: domain of the operator
@@ -214,7 +216,7 @@ class Gradient_numpy(LinearOperator):
         # Call FiniteDifference operator 
         self.method = method
         self.FD = FiniteDifferenceOperator(domain_geometry, direction = 0, method = self.method, bnd_cond = self.bnd_cond)
-    
+
         if self.correlation==CORRELATION_SPACE and 'channel' in domain_geometry.dimension_labels:
             self.ndim -= 1
             self.ind.remove(domain_geometry.dimension_labels.index('channel'))
@@ -226,6 +228,8 @@ class Gradient_numpy(LinearOperator):
             self.voxel_size_order = list(domain_geometry.spacing)
         except:
             self.voxel_size_order = [1]*len(domain_geometry.shape)
+
+        self.backend = backend
 
         super(Gradient_numpy, self).__init__(domain_geometry = domain_geometry, 
                                              range_geometry = range_geometry) 
@@ -239,7 +243,7 @@ class Gradient_numpy(LinearOperator):
                  self.FD.voxel_size = self.voxel_size_order[axis_index]
                  self.FD.direct(x, out = out[i])
          else:
-             tmp = self.range_geometry().allocate()        
+             tmp = self.range_geometry().allocate(backend=self.backend)        
              for i, axis_index in enumerate(self.ind):
                  self.FD.direction = axis_index
                  self.FD.voxel_size = self.voxel_size_order[axis_index]
@@ -249,7 +253,7 @@ class Gradient_numpy(LinearOperator):
     def adjoint(self, x, out=None):
 
         if out is not None:
-            tmp = self.domain_geometry().allocate()            
+            tmp = self.domain_geometry().allocate(backend=self.backend)            
             for i, axis_index in enumerate(self.ind):
                 self.FD.direction = axis_index
                 self.FD.voxel_size = self.voxel_size_order[axis_index]
@@ -259,7 +263,7 @@ class Gradient_numpy(LinearOperator):
                 else:
                     out += tmp
         else:            
-            tmp = self.domain_geometry().allocate()
+            tmp = self.domain_geometry().allocate(backend=self.backend)
             for i, axis_index in enumerate(self.ind):
                 self.FD.direction = axis_index
                 self.FD.voxel_size = self.voxel_size_order[axis_index]
