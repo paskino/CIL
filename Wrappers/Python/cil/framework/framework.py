@@ -2899,10 +2899,7 @@ class DataContainer(object):
             if isinstance(array, Number):
                 self.array.fill(array)
             else:
-                # If the type is different we need to crash
-                if array.dtype != self.dtype:
-                    # arr = numpy.array(array.get(), dtype=self.dtype)
-                    raise ValueError("Cannot fill with the given data: wrong type. Expecting {}, got {}".format(self.dtype, array.dtype))
+                # If the type is different the underlying functions may crash
                 if isinstance(array, numpy.ndarray) or isinstance(array, cp.ndarray):
                     if self.backend == 'cupy':
                         self.array = cp.array(array)

@@ -658,8 +658,6 @@ class TestDataContainer(CCPiTestClass):
 
         with self.assertRaises(TypeError):
             data1.fill(r)
-        
-    def test_ImageGeometry_allocate_complex(self):
 
     def test_ImageGeometry_allocate_complex(self):
         ig = ImageGeometry(2,2)
@@ -885,6 +883,23 @@ class TestDataContainer(CCPiTestClass):
             for i in numpy.arange(len(function_names)):
                 self.directional_reduction_unary_test(data_classes[j], getattr(data_classes[j],function_names[i]), getattr(numpy,function_names[i]), out_classes[j], function_names[i])
 
+    def test_allocate_fill_dtype_raises(self):
+        ag = AcquisitionGeometry.create_Parallel3D().set_angles(numpy.linspace(0, 180, num=0)).set_panel((2,2))
+        dtypes = [int, numpy.int8, numpy.uint8, numpy.int16, numpy.uint16, numpy.int32, numpy.uint32, numpy.int64, numpy.uint64]
+        
+        for dtype in dtypes:
+            ad = ag.allocate(1, dtype=dtype)
+            with self.assertRaises(TypeError):
+                npad = numpy.zeros((2,2), dtype=numpy.float32)
+                ad.fill(npad)    
+                # numpy.testing.assert_almost_equal(ad.as_array(), npad)
+        
+        for dtype in [complex, numpy.complex64, numpy.complex128]:
+            # default dtype is float32
+            ad = ag.allocate(1)
+            with self.assertRaises(TypeError):
+                npad = numpy.zeros((2,2), dtype=dtype)
+                ad.fill(npad)    
 
     def test_mean_direction(self):
         np_arr = numpy.array([[[0,1],[2,3]],[[4,5],[6,7]]])
