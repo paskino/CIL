@@ -266,33 +266,10 @@ class TestOperator(CCPiTestClass):
             numpy.testing.assert_almost_equal(res.as_array(), w.as_array())
             numpy.testing.assert_almost_equal(u.as_array(), w.as_array())
 
-        G = GradientOperator(ig, backend='numpy')
-
-        u = G.range_geometry().allocate(ImageGeometry.RANDOM, backend=backend)
-        res = G.domain_geometry().allocate(backend=backend)
-        G.adjoint(u, out=res)
-        w = G.adjoint(u)
-
-        # self.assertArrayEqual(res, w)
-        # numpy.testing.assert_almost_equal(res.as_array(), w.as_array())
-        if backend == 'cupy':
-            numpy.testing.assert_almost_equal(res.as_array(), w.as_array().get())
-        else:
-            numpy.testing.assert_almost_equal(res.as_array(), w.as_array())
-        
-        
-        u = G.domain_geometry().allocate(ImageGeometry.RANDOM, backend=backend)
-        res = G.range_geometry().allocate(backend=backend)
-        G.direct(u, out=res)
-        w = G.direct(u)
-        # TODO: remove this 
-        if backend == 'numpy':
-            self.assertBlockDataContainerEqual(res, w)
-        
         # 2D       
         M, N = 2, 3
         ig = ImageGeometry(voxel_num_x=M, voxel_num_y=N, voxel_size_x=0.1, voxel_size_y=0.4)
-        x = ig.allocate('random')
+        x = ig.allocate('random', backend=backend)
                 
         labels = ["horizontal_y", "horizontal_x"]
         
@@ -318,7 +295,7 @@ class TestOperator(CCPiTestClass):
         # 2D  + chan     
         M, N, K = 2,3,4
         ig1 = ImageGeometry(voxel_num_x=M, voxel_num_y=N, channels=K, voxel_size_x=0.1, voxel_size_y=0.4)
-        x = ig1.allocate('random')
+        x = ig1.allocate('random', backend=backend)
         
         labels = ["channel","horizontal_y", "horizontal_x"]
         
@@ -337,6 +314,47 @@ class TestOperator(CCPiTestClass):
                 numpy.testing.assert_almost_equal(res1.as_array(), res2.as_array())
                 numpy.testing.assert_almost_equal(res1b.as_array(), res2b.as_array()) 
             
+
+    def test_GradientOperatorNumpy(self):
+        self._test_GradientOperator('numpy')
+    
+    def test_GradientOperatorCupy(self):
+        self._test_GradientOperator('cupy')
+
+    def _test_GradientOperator(self, backend):
+        ##
+        N, M = 2, 3
+        numpy.random.seed(1)
+        ig = ImageGeometry(N, M)
+
+        G = GradientOperator(ig, backend='numpy')
+
+        u = G.range_geometry().allocate(ImageGeometry.RANDOM, backend=backend)
+        res = G.domain_geometry().allocate(backend=backend)
+        w = G.adjoint(u)
+        G.adjoint(u, out=res)
+        
+
+        # self.assertArrayEqual(res, w)
+        # numpy.testing.assert_almost_equal(res.as_array(), w.as_array())
+        if backend == 'cupy':
+            numpy.testing.assert_almost_equal(res.as_array().get(), w.as_array().get())
+        else:
+            numpy.testing.assert_almost_equal(res.as_array(), w.as_array())
+        
+        
+        u = G.domain_geometry().allocate(ImageGeometry.RANDOM, backend=backend)
+        res = G.range_geometry().allocate(backend=backend)
+        G.direct(u, out=res)
+        w = G.direct(u)
+        # # TODO: remove this 
+        if backend == 'numpy':
+            self.assertBlockDataContainerEqual(res, w)
+        else:
+            for c1,c2 in zip(res.containers, w.containers):
+                numpy.testing.assert_almost_equal(c1.as_array().get(), c2.as_array().get())
+        
+        
 
     def test_PowerMethod(self):
         # 2x2 real matrix, dominant eigenvalue = 2

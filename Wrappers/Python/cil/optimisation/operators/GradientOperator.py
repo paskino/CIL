@@ -243,7 +243,7 @@ class Gradient_numpy(LinearOperator):
                  self.FD.voxel_size = self.voxel_size_order[axis_index]
                  self.FD.direct(x, out = out[i])
          else:
-             tmp = self.range_geometry().allocate(backend=self.backend)        
+             tmp = self.range_geometry().allocate(backend=x.backend)        
              for i, axis_index in enumerate(self.ind):
                  self.FD.direction = axis_index
                  self.FD.voxel_size = self.voxel_size_order[axis_index]
@@ -251,9 +251,10 @@ class Gradient_numpy(LinearOperator):
              return tmp    
         
     def adjoint(self, x, out=None):
-
+        # assuming that the backend will be the same in the BlockDataContainer x
+        tmp = self.domain_geometry().allocate(backend=x.backend[0])            
+            
         if out is not None:
-            tmp = self.domain_geometry().allocate(backend=self.backend)            
             for i, axis_index in enumerate(self.ind):
                 self.FD.direction = axis_index
                 self.FD.voxel_size = self.voxel_size_order[axis_index]
@@ -263,7 +264,6 @@ class Gradient_numpy(LinearOperator):
                 else:
                     out += tmp
         else:            
-            tmp = self.domain_geometry().allocate(backend=self.backend)
             for i, axis_index in enumerate(self.ind):
                 self.FD.direction = axis_index
                 self.FD.voxel_size = self.voxel_size_order[axis_index]

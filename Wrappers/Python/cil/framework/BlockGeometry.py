@@ -52,8 +52,9 @@ class BlockGeometry(object):
         
         '''Allocates a BlockDataContainer according to geometries contained in the BlockGeometry'''
         
-        symmetry = kwargs.get('symmetry',False)        
-        containers = [geom.allocate(value, **kwargs) for geom in self.geometries]
+        symmetry = kwargs.get('symmetry',False)
+        backends = [ kwargs.pop('backend', 'numpy') ]  * len(self.geometries)
+        containers = [geom.allocate(value, backend=backend, **kwargs) for geom, backend in zip(self.geometries, backends)]
         
         if symmetry == True:
                         

@@ -83,6 +83,9 @@ class BlockDataContainer(object):
                     'Dimension and size do not match: expected {} got {}'
                     .format(n_elements, len(args)))
 
+    @property
+    def backend(self):
+        return [i.backend for i in self.containers]
         
     def __iter__(self):
         '''BlockDataContainer is Iterable'''
