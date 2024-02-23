@@ -227,7 +227,7 @@ class TotalVariation(Function):
           or initialised as the last iterate seen in the proximal calculation in the case warm_start=True ."""
 
         if self._p2 is None:
-            return self.gradient.range_geometry().allocate(0)
+            return self.gradient.range_geometry().allocate(0, backend=self.tv_backend)
         else:
             return self._p2
 
@@ -305,7 +305,7 @@ class TotalVariation(Function):
         t = 1
 
         # dual variable - its content is overwritten during iterations
-        p1 = self.gradient.range_geometry().allocate(None)
+        p1 = self.gradient.range_geometry().allocate(None, backend=self.tv_backend)
         p2 = self._get_p2()
         tmp_q = p2.copy()
 
@@ -320,7 +320,7 @@ class TotalVariation(Function):
         should_return = False
         if out is None:
             should_return = True
-            out = self.gradient.domain_geometry().allocate(0)
+            out = self.gradient.domain_geometry().allocate(0, backend=self.tv_backend)
 
         for k in range(self.iterations):
 
@@ -389,7 +389,7 @@ class TotalVariation(Function):
         """
         if self._domain is not None:
             self._gradient = GradientOperator(
-                self._domain, correlation=self.correlation, backend=self.backend)
+                self._domain, correlation=self.correlation, backend=self.tv_backend)
         else:
             raise ValueError(
                 " The domain of the TotalVariation is {}. Please use the __call__ or proximal methods first before calling gradient.".format(self._domain))

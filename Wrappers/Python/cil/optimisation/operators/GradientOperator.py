@@ -86,7 +86,7 @@ class GradientOperator(LinearOperator):
 
     def __init__(self, domain_geometry, method = 'forward', bnd_cond = 'Neumann', **kwargs):
         # Default backend = C
-        backend = kwargs.get('backend',C)
+        backend = kwargs.pop('backend',C)
 
         # Default correlation for the gradient coupling
         self.correlation = kwargs.get('correlation',CORRELATION_SPACE)
@@ -109,7 +109,7 @@ class GradientOperator(LinearOperator):
                 backend = NUMPY
                 logging.warning("C backend is only implemented for forward differences - defaulting to `numpy` backend")
         if backend == NUMPY:
-            self.operator = Gradient_numpy(domain_geometry, bnd_cond=bnd_cond, **kwargs)
+            self.operator = Gradient_numpy(domain_geometry, bnd_cond=bnd_cond, backend=backend, **kwargs)
         elif backend == 'cupy':
             self.operator = Gradient_numpy(domain_geometry, bnd_cond=bnd_cond, backend=backend, **kwargs)
         else:

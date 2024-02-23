@@ -1331,6 +1331,53 @@ class TestTotalVariation(unittest.TestCase):
                                              res2.as_array(),
                                              decimal=3, err_msg='Comparing the CCPi proximal against the CIL TV proximal, with warm_start')
 
+    @unittest.skipUnless(has_ccpi_regularisation,
+                         "Regularisation Toolkit not present")
+    def test_compare_regularisation_toolkit_cupy(self):
+        data = dataexample.SHAPES.get(size=(16, 16))
+        ig = data.geometry
+        ag = ig
+
+        np.random.seed(0)
+        # Create noisy data.
+        n1 = np.random.normal(0, 0.0005, size=ig.shape)
+        noisy_data = ig.allocate()
+        noisy_data.fill(n1 + data.as_array())
+
+        alpha = 0.1
+        iters = 500
+
+        # CIL_FGP_TV no tolerance
+        g_CIL = alpha * TotalVariation(
+            iters, tolerance=None, lower=0, info=True, warm_start=False, backend='cupy')
+        t0 = timer()
+        cunoisy_data = noisy_data.geometry.allocate(None, backend='cupy')
+        cunoisy_data.fill(noisy_data.as_array())
+        res1 = g_CIL.proximal(cunoisy_data, 1.)
+        t1 = timer()
+        # print(t1-t0)
+
+        r_alpha = alpha
+        r_iterations = iters
+        r_tolerance = 1e-9
+        r_iso = True
+        r_nonneg = True
+        g_CCPI_reg_toolkit = alpha * FGP_TV(max_iteration=r_iterations,
+                                            tolerance=r_tolerance,
+                                            isotropic=r_iso,
+                                            nonnegativity=r_nonneg,
+                                            device='cpu')
+
+        t2 = timer()
+        res2 = g_CCPI_reg_toolkit.proximal(noisy_data, 1.)
+        t3 = timer()
+
+        np.testing.assert_array_almost_equal(res1.as_array().get(),
+                                             res2.as_array(),
+                                             decimal=4, err_msg='Comparing the CCPi proximal against the CIL TV proximal, no tolerance')
+
+
+
     @unittest.skipUnless(has_tomophantom and has_ccpi_regularisation,
                          "Missing Tomophantom or Regularisation-Toolkit")
     def test_compare_regularisation_toolkit_tomophantom(self):
