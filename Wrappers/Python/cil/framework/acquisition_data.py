@@ -47,6 +47,7 @@ class AcquisitionData(DataContainer, Partitioner):
                  array = None,
                  deep_copy=True,
                  geometry = None,
+                 dtype = numpy.float32,
                  **kwargs):
 
         dtype = kwargs.get('dtype', numpy.float32)

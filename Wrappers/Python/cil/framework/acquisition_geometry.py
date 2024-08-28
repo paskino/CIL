@@ -2182,7 +2182,7 @@ class AcquisitionGeometry(object):
 
         if isinstance(value, Number):
             # it's created empty, so we make it 0
-            out.array.fill(value)
+            out.fill(value)
         elif value in FillType:
             if value == FillType.RANDOM:
                 seed = kwargs.get('seed', None)
@@ -2192,7 +2192,7 @@ class AcquisitionGeometry(object):
                     r = numpy.random.random_sample(self.shape) + 1j * numpy.random.random_sample(self.shape)
                     out.fill(r)
                 else:
-                    out.fill(numpy.random.random_sample(self.shape))
+                    out.fill(numpy.asarray(numpy.random.random_sample(self.shape),dtype=dtype))
             elif value == FillType.RANDOM_INT:
                 seed = kwargs.get('seed', None)
                 if seed is not None:

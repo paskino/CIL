@@ -20,6 +20,7 @@ import warnings
 from numbers import Number
 
 import numpy
+import cupy as cp
 
 from .image_data import ImageData
 from .labels import ImageDimension, FillType
@@ -253,7 +254,7 @@ class ImageGeometry:
             repres += "center : x{0},y{1}\n".format(self.center_x, self.center_y)
 
         return repres
-    def allocate(self, value=0, **kwargs):
+    def allocate(self, value=0, dtype=None, backend='numpy', **kwargs):
         '''allocates an ImageData according to the size expressed in the instance
 
         :param value: accepts numbers to allocate an uniform array, or a string as 'random' or 'random_int' to create a random array or None.
@@ -262,18 +263,20 @@ class ImageGeometry:
         :type dtype: numpy type, default numpy.float32
         '''
 
-        dtype = kwargs.get('dtype', self.dtype)
+        if dtype is None:
+            dtype = self.dtype
 
         if kwargs.get('dimension_labels', None) is not None:
             raise ValueError("Deprecated: 'dimension_labels' cannot be set with 'allocate()'. Use 'geometry.set_labels()' to modify the geometry before using allocate.")
 
         out = ImageData(geometry=self.copy(),
                             dtype=dtype,
+                            backend=backend,
                             suppress_warning=True)
 
         if isinstance(value, Number):
             # it's created empty, so we make it 0
-            out.array.fill(value)
+            out.fill(value)
         elif value in FillType:
             if value == FillType.RANDOM:
                 seed = kwargs.get('seed', None)
@@ -283,7 +286,7 @@ class ImageGeometry:
                     r = numpy.random.random_sample(self.shape) + 1j * numpy.random.random_sample(self.shape)
                     out.fill(r)
                 else:
-                    out.fill(numpy.random.random_sample(self.shape))
+                    out.fill(numpy.asarray(numpy.random.random_sample(self.shape), dtype=dtype))
 
             elif value == FillType.RANDOM_INT:
                 seed = kwargs.get('seed', None)

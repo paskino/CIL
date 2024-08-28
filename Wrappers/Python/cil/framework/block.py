@@ -65,7 +65,8 @@ class BlockGeometry(object):
 
         symmetry = kwargs.get('symmetry',False)
         containers = [geom.allocate(value, **kwargs) for geom in self.geometries]
-
+        backends = [ kwargs.pop('backend', 'numpy') ]  * len(self.geometries)
+        
         if symmetry == True:
 
             # for 2x2

@@ -16,6 +16,7 @@
 # Authors:
 # CIL Developers, listed at: https://github.com/TomographicImaging/CIL/blob/master/NOTICE.txt
 import numpy
+import cupy as cp
 
 from .data_container import DataContainer
 from .labels import ImageDimension, Backend
@@ -45,6 +46,10 @@ class ImageData(DataContainer):
                  array = None,
                  deep_copy=False,
                  geometry=None,
+                 dtype=numpy.float32,
+                 suppress_warning=False,
+                 backend='numpy', 
+                 dimension_labels=None,
                  **kwargs):
 
         dtype = kwargs.get('dtype', numpy.float32)
@@ -59,12 +64,18 @@ class ImageData(DataContainer):
                 raise ValueError("Deprecated: 'dimension_labels' cannot be set with 'allocate()'. Use 'geometry.set_labels()' to modify the geometry before using allocate.")
 
         if array is None:
-            array = numpy.empty(geometry.shape, dtype=dtype)
+            if backend == 'numpy':
+                bknd = numpy
+            elif backend == 'cupy':
+                bknd = cp
+            array = bknd.empty(geometry.shape, dtype=dtype)
         elif issubclass(type(array) , DataContainer):
             array = array.as_array()
         elif issubclass(type(array) , numpy.ndarray):
             # remove singleton dimensions
             array = numpy.squeeze(array)
+        elif issubclass(type(array), cp.ndarray):
+            array = cp.squeeze(array)
         else:
             raise TypeError('array must be a CIL type DataContainer or numpy.ndarray got {}'.format(type(array)))
 

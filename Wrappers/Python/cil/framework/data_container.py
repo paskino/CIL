@@ -22,6 +22,7 @@ from functools import reduce
 from numbers import Number
 
 import numpy
+import cupy as cp
 
 from .cilacc import cilacc
 from cil.utilities.multiprocessing import NUM_THREADS
@@ -89,18 +90,21 @@ class DataContainer(object):
     def size(self):
         '''Returns the number of elements of the DataContainer'''
         return self.array.size
+    
+    @property
+    def backend(self):
+        return self._backend
 
     __container_priority__ = 1
-    def __init__ (self, array, deep_copy=True, dimension_labels=None,
+    def __init__ (self, array, deep_copy=True, dimension_labels=None, backend='numpy',
                   **kwargs):
-        if type(array) == numpy.ndarray:
-            if deep_copy:
-                self.array = array.copy()
-            else:
-                self.array = array
+        
+        self._backend = backend
+        
+        if deep_copy:
+            self.array = array.copy()
         else:
-            raise TypeError('Array must be NumpyArray, passed {0}'\
-                            .format(type(array)))
+            self.array = array    
 
         #Don't set for derived classes
         if type(self) is DataContainer:
@@ -237,26 +241,37 @@ class DataContainer(object):
         if id(array) == id(self.array):
             return
         if dimension == {}:
-            if isinstance(array, numpy.ndarray):
-                numpy.copyto(self.array, array)
-            elif isinstance(array, Number):
+            if isinstance(array, Number):
                 self.array.fill(array)
-            elif issubclass(array.__class__ , DataContainer):
-
-                try:
-                    if self.dimension_labels != array.dimension_labels:
-                        raise ValueError('Input array is not in the same order as destination array. Use "array.reorder()"')
-                except AttributeError:
-                    pass
-
-                if self.array.shape == array.shape:
-                    numpy.copyto(self.array, array.array)
-                else:
-                    raise ValueError('Cannot fill with the provided array.' + \
-                                     'Expecting shape {0} got {1}'.format(
-                                     self.shape,array.shape))
             else:
-                raise TypeError('Can fill only with number, numpy array or DataContainer and subclasses. Got {}'.format(type(array)))
+                # If the type is different the underlying functions may crash
+                if isinstance(array, numpy.ndarray) or isinstance(array, cp.ndarray):
+                    if self.backend == 'cupy':
+                        self.array = cp.array(array)
+                    elif self.backend == 'numpy':
+                        numpy.copyto(self.array, array)
+                    else:
+                        raise ValueError('Unsupported backend {}'.format(self.backend))
+                
+                elif issubclass(array.__class__ , DataContainer):
+
+                    try:
+                        if self.dimension_labels != array.dimension_labels:
+                            raise ValueError('Input array is not in the same order as destination array. Use "array.reorder()"')
+                    except AttributeError:
+                        pass
+
+                    if self.array.shape == array.shape:
+                        if self.backend == 'cupy':
+                                self.array = cp.array(array.array)
+                        elif self.backend == 'numpy':
+                            numpy.copyto(self.array, array.array)
+                    else:
+                        raise ValueError('Cannot fill with the provided array.' + \
+                                        'Expecting shape {0} got {1}'.format(
+                                        self.shape, array.shape))
+                else:
+                    raise TypeError('Can fill only with number, numpy array or DataContainer and subclasses. Got {}'.format(type(array)))
         else:
 
             axis = [':']* self.number_of_dimensions
@@ -273,7 +288,7 @@ class DataContainer(object):
                 command += str(el)
                 i+=1
 
-            if isinstance(array, numpy.ndarray):
+            if isinstance(array, numpy.ndarray) or isinstance(array, cp.ndarray):
                 command = command + "] = array[:]"
             elif issubclass(array.__class__, DataContainer):
                 command = command + "] = array.as_array()[:]"
@@ -421,7 +436,8 @@ class DataContainer(object):
                    deep_copy=False,
                    dimension_labels=self.dimension_labels,
                    geometry= None if self.geometry is None else self.geometry.copy(),
-                   suppress_warning=True)
+                   suppress_warning=True,
+                   backend=self.backend)
 
 
         elif issubclass(type(out), DataContainer) and issubclass(type(x2), DataContainer):
@@ -526,6 +542,8 @@ class DataContainer(object):
                 warnings.warn("sapyb defaulting to Python due to: {}".format(rte))
             except TypeError as te:
                 warnings.warn("sapyb defaulting to Python due to: {}".format(te))
+            except AttributeError as ae:
+                warnings.warn("sapyb defaulting to Python due to: {}".format(ae))
             finally:
                 pass
 
@@ -647,7 +665,8 @@ class DataContainer(object):
                        deep_copy=False,
                        dimension_labels=self.dimension_labels,
                        geometry=self.geometry,
-                       suppress_warning=True)
+                       suppress_warning=True,
+                       backend=self.backend)
         elif issubclass(type(out), DataContainer):
             if self.check_dimensions(out):
                 kwargs['out'] = out.as_array()
